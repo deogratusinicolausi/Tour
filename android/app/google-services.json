@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "749360118137",
+    "project_id": "turiva",
+    "storage_bucket": "turiva.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:749360118137:android:cb2a144e34389a062497a8",
+        "android_client_info": {
+          "package_name": "com.example.turiva"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDKlIwhqR51p9Vb0tnwlbWJnpgV0MUcXk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
