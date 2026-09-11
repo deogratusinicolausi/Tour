@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
+import 'package:cloudinary_made_easy/cloudinary_made_easy.dart';
+import 'dart:async';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'national_parks_screen.dart';
+import '../utils/colors.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -20,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  double _imageSize = 500;
 
   // 🆕 UNBELIEVABLE FEATURES
   int _travelCount = 0;
@@ -75,20 +79,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _pickImage() async {
     try {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      // ✅ Initialize Cloudinary service
+      final cloudinary = CloudinaryService(
+        cloudName: 'zy9bpr85', // Weka Cloud Name yako hapa
+        uploadPreset: 'turiva_profile', // Weka preset uliyounda hapa
+      );
 
-      if (pickedFile != null) {
-        // Upload to Firebase Storage (you need to set this up)
-        // For now, just show a success message
+      // ✅ Pick and upload image
+      final String? url = await cloudinary.pickAndUploadImage(
+        onProgress: (progress) {
+          print('Uploading: ${(progress * 100).toStringAsFixed(0)}%');
+        },
+      );
+
+      if (url != null) {
+        setState(() => _isLoading = true);
+
+        // ✅ Update user profile with new photo
+        await user?.updatePhotoURL(url);
+        await user?.reload();
+
+        setState(() {
+          user = _auth.getCurrentUser();
+          _photoUrl = url;
+          _isLoading = false;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('📸 Image selected! (Storage setup needed)'),
-            backgroundColor: Colors.blue,
+            content: Text('✅ Profile photo updated!'),
+            backgroundColor: Colors.green,
           ),
         );
       }
     } catch (e) {
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
       );
@@ -118,38 +143,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF1A237E),
-              Color(0xFF0D47A1),
-              Color(0xFF00695C),
+              AppColors.primaryDark,
+              AppColors.primary,
+              AppColors.primaryGreen,
             ],
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(width * 0.05),
-            child: Column(
-              children: [
-                // 🆕 PROFILE HEADER
-                _buildProfileHeader(width, height),
-                SizedBox(height: height * 0.03),
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: width * 0.05,
+                    right: width * 0.05,
+                    top: width * 0.05,
+                    bottom: 120, // ⭐ Space for curved nav
+                  ),
+                  child: Column(
+                    children: [
+                      // 🆕 PROFILE HEADER
+                      _buildProfileHeader(width, height),
+                      SizedBox(height: height * 0.03),
 
-                // 🆕 STATS CARDS
-                _buildStatsSection(width),
-                SizedBox(height: height * 0.03),
+                      // 🆕 STATS CARDS
+                      _buildStatsSection(width),
+                      SizedBox(height: height * 0.03),
 
-                // 🆕 PROFILE FORM
-                _buildProfileForm(width, height),
-                SizedBox(height: height * 0.03),
+                      // 🆕 PROFILE FORM
+                      _buildProfileForm(width, height),
+                      SizedBox(height: height * 0.03),
 
-                // 🆕 TRAVEL MEMORIES
-                _buildTravelMemories(width, height),
-                SizedBox(height: height * 0.03),
+                      // 🆕 TRAVEL MEMORIES
+                      _buildTravelMemories(width, height),
+                      SizedBox(height: height * 0.03),
 
-                // 🆕 LOGOUT BUTTON
-                _buildLogoutButton(width),
-              ],
-            ),
-          ),
+                      // 🆕 LOGOUT BUTTON
+                      _buildLogoutButton(width),
+                    ],
+                  ),
+                ),
         ),
       ),
     );
@@ -177,22 +213,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // 🆕 PROFILE AVATAR
           Stack(
             children: [
-              CircleAvatar(
-                radius: width * 0.12,
-                backgroundColor: Colors.white,
-                backgroundImage: _photoUrl != null
-                    ? NetworkImage(_photoUrl!)
-                    : null,
-                child: _photoUrl == null
-                    ? Text(
-                  user?.displayName?.substring(0, 1).toUpperCase() ?? '?',
-                  style: TextStyle(
-                    fontSize: width * 0.08,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue.shade900,
+              Container(
+                width: _imageSize / 4, // Tunagawa ili isizidi kioo lakini ifuate slider
+                height: _imageSize / 4,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  image: DecorationImage(
+                    image: _photoUrl != null
+                        ? NetworkImage(_photoUrl!)
+                        : const AssetImage('assets/default.png') as ImageProvider,
+                    fit: BoxFit.cover,
                   ),
-                )
-                    : null,
+                ),
               ),
               Positioned(
                 bottom: 0,
@@ -201,8 +234,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onTap: _pickImage,
                   child: Container(
                     padding: EdgeInsets.all(width * 0.025),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5A623),
+                    decoration: const BoxDecoration(
+                      color: AppColors.accentGold,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -216,6 +249,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           SizedBox(height: height * 0.02),
+
+          // ✅ Image Size Slider Controls
+          Column(
+            children: [
+              Text(
+                '📐 Image Size: ${_imageSize.toInt()} px',
+                style: TextStyle(color: Colors.white70, fontSize: width * 0.03),
+              ),
+              Slider(
+                value: _imageSize,
+                min: 100,
+                max: 800,
+                activeColor: AppColors.accentGold,
+                inactiveColor: Colors.white24,
+                onChanged: (value) {
+                  setState(() => _imageSize = value);
+                },
+              ),
+            ],
+          ),
 
           // 🆕 USER NAME & EMAIL
           Text(
@@ -243,21 +296,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               vertical: height * 0.01,
             ),
             decoration: BoxDecoration(
-              color: const Color(0xFFF5A623).withOpacity(0.2),
+              color: AppColors.accentGold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: const Color(0xFFF5A623).withOpacity(0.3),
+                color: AppColors.accentGold.withOpacity(0.3),
               ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.star, color: Color(0xFFF5A623), size: 16),
+                const Icon(Icons.star, color: AppColors.accentGold, size: 16),
                 SizedBox(width: width * 0.02),
                 Text(
                   'TURIVA TRAVELER 🏆',
                   style: TextStyle(
-                    color: const Color(0xFFF5A623),
+                    color: AppColors.accentGold,
                     fontSize: width * 0.03,
                     fontWeight: FontWeight.bold,
                   ),
@@ -378,7 +431,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 : ElevatedButton(
               onPressed: _updateProfile,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF5A623),
+                backgroundColor: AppColors.accentGold,
                 padding: EdgeInsets.symmetric(vertical: height * 0.02),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -401,10 +454,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildTravelMemories(double width, double height) {
     final memories = [
-      '🏔️ Kilimanjaro - 2025',
-      '🏖️ Zanzibar - 2025',
-      '🦁 Serengeti - 2024',
-      '🌿 Ngorongoro - 2024',
+      {
+        'emoji': '🏔️',
+        'name': 'Kilimanjaro',
+        'date': '2025',
+        'url': 'https://www.tanzaniaparks.go.tz/kilimanjaro',
+        'image': 'https://images.unsplash.com/photo-1544731612-de6a63c6cf1a?w=400',
+      },
+      {
+        'emoji': '🏖️',
+        'name': 'Zanzibar',
+        'date': '2025',
+        'url': 'https://www.zanzibartourism.go.tz',
+        'image': 'https://images.unsplash.com/photo-1532346751886-792675b6c2b5?w=400',
+      },
+      {
+        'emoji': '🦁',
+        'name': 'Serengeti',
+        'date': '2024',
+        'url': 'https://www.serengeti.com',
+        'image': 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=400',
+      },
+      {
+        'emoji': '🌿',
+        'name': 'Ngorongoro',
+        'date': '2024',
+        'url': 'https://www.ngorongorocrater.org',
+        'image': 'https://images.unsplash.com/photo-1587593810167-c8496c6c8e1f?w=400',
+      },
     ];
 
     return Container(
@@ -429,31 +506,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NationalParksScreen()),
+                  );
+                },
                 child: Text(
                   'See All',
-                  style: TextStyle(color: const Color(0xFFF5A623)),
+                  style: TextStyle(color: AppColors.accentGold),
                 ),
               ),
             ],
           ),
           SizedBox(height: width * 0.02),
           ...memories.map((memory) {
-            return Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: width * 0.03,
-                vertical: height * 0.015,
-              ),
-              margin: EdgeInsets.only(bottom: height * 0.01),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                memory,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: width * 0.035,
+            return GestureDetector(
+              onTap: () async {
+                final Uri url = Uri.parse(memory['url']!);
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: Container(
+                margin: EdgeInsets.only(bottom: height * 0.015),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  image: DecorationImage(
+                    image: NetworkImage(memory['image']!),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(
+                      Colors.black.withOpacity(0.5),
+                      BlendMode.darken,
+                    ),
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(width * 0.04),
+                  child: Row(
+                    children: [
+                      Text(memory['emoji']!, style: TextStyle(fontSize: width * 0.07)),
+                      SizedBox(width: width * 0.03),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              memory['name']!,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: width * 0.04,
+                              ),
+                            ),
+                            Text(
+                              memory['date']!,
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: width * 0.03,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white,
+                        size: width * 0.04,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );

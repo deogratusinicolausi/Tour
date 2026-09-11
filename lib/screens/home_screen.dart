@@ -3,10 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lottie/lottie.dart';
 import '../services/auth_service.dart';
 import 'profile_screen.dart';
-import 'profile_screen.dart';
+import '../utils/colors.dart';
+import 'category_screen.dart'; // Ensure this file exists
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback? onProfileTap;
+
+  const HomeScreen({super.key, this.onProfileTap});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -15,7 +18,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final AuthService _auth = AuthService();
   User? user;
-  int _selectedIndex = 0;
 
   @override
   void initState() {
@@ -41,8 +43,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: width * 0.04),
+          padding: EdgeInsets.only(
+            left: width * 0.04,
+            right: width * 0.04,
+            bottom: 120,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -64,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildSearchBar(width),
 
               // 3. Categories
-              _buildCategories(width),
+              _buildCategories(width, height),
 
               // 4. Featured destinations
               _buildFeaturedDestinations(width, height),
@@ -78,7 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -89,45 +95,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/login');
     }
-  }
-
-  BottomNavigationBar _buildBottomNavBar() {
-    return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      onTap: (index) {
-        if (index == 3) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ProfileScreen()),
-          );
-        } else {
-          setState(() {
-            _selectedIndex = index;
-          });
-        }
-      },
-      type: BottomNavigationBarType.fixed,
-      selectedItemColor: Colors.blue.shade900,
-      unselectedItemColor: Colors.grey.shade600,
-      items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.home),
-          label: 'Home',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.search),
-          label: 'Explore',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.favorite),
-          label: 'Wishlist',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: 'Profile',
-        ),
-      ],
-    );
   }
 
   Widget _buildNetworkImage(String url, double width, double height) {
@@ -143,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return Container(
             width: width,
             height: height,
-            color: Colors.grey.shade200,
+            color: Colors.blueGrey,
             child: Center(
               child: CircularProgressIndicator(
                 value: loadingProgress.expectedTotalBytes != null
@@ -191,14 +158,28 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          CircleAvatar(
-            radius: width * 0.06,
-            backgroundColor: Colors.blue.shade900,
-            child: Text(
-              user?.displayName?.substring(0, 1).toUpperCase() ?? '?',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: width * 0.05,
+          GestureDetector(
+            onTap: () {
+              if (widget.onProfileTap != null) {
+                widget.onProfileTap!();
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ProfileScreen(),
+                  ),
+                );
+              }
+            },
+            child: CircleAvatar(
+              radius: width * 0.06,
+              backgroundColor: AppColors.primary,
+              child: Text(
+                user?.displayName?.substring(0, 1).toUpperCase() ?? '?',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: width * 0.05,
+                ),
               ),
             ),
           ),
@@ -230,55 +211,133 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildCategories(double width) {
+  Widget _buildCategories(double width, double height) {
     final categories = [
-      {'icon': '🏨', 'name': 'Hotels'},
-      {'icon': '🦁', 'name': 'Safari'},
-      {'icon': '🏖️', 'name': 'Beaches'},
-      {'icon': '⛰️', 'name': 'Mountains'},
-      {'icon': '🎭', 'name': 'Culture'},
-      {'icon': '🍛', 'name': 'Food'},
+      {
+        'icon': '🏨',
+        'name': 'Hotels',
+        'gradient': [const Color(0xFF667eea), const Color(0xFF764ba2)],
+      },
+      {
+        'icon': '🦁',
+        'name': 'Safari',
+        'gradient': [const Color(0xFFf093fb), const Color(0xFFf5576c)],
+      },
+      {
+        'icon': '🏖️',
+        'name': 'Beaches',
+        'gradient': [const Color(0xFF4facfe), const Color(0xFF00f2fe)],
+      },
+      {
+        'icon': '⛰️',
+        'name': 'Mountains',
+        'gradient': [const Color(0xFF43e97b), const Color(0xFF38f9d7)],
+      },
+      {
+        'icon': '🎭',
+        'name': 'Culture',
+        'gradient': [const Color(0xFFfa709a), const Color(0xFFfee140)],
+      },
+      {
+        'icon': '🍛',
+        'name': 'Food',
+        'gradient': [const Color(0xFFff9a9e), const Color(0xFFfecfef)],
+      },
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Explore Categories',
-          style: TextStyle(
-            fontSize: width * 0.045,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade800,
-          ),
+        // Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Explore Categories',
+              style: TextStyle(
+                fontSize: width * 0.045,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                // Navigate to all categories
+              },
+              child: Text(
+                'See All',
+                style: TextStyle(color: AppColors.primary),
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: width * 0.02),
+        SizedBox(height: width * 0.03),
+
+        // Categories List
         SizedBox(
-          height: width * 0.28, // ← Reduced height
+          height: width * 0.32,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: categories.length,
             itemBuilder: (context, index) {
               final category = categories[index];
-              return Container(
-                width: width * 0.18, // ← Reduced width
-                margin: EdgeInsets.only(right: width * 0.02),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(category['icon']!, style: TextStyle(fontSize: width * 0.06)),
-                    SizedBox(height: width * 0.005),
-                    Text(
-                      category['name']!,
-                      style: TextStyle(
-                        fontSize: width * 0.025,
-                        fontWeight: FontWeight.w500,
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CategoryScreen(
+                        categoryName: category['name'] as String,
+                        icon: category['icon'] as String,
                       ),
                     ),
-                  ],
+                  );
+                },
+                child: Container(
+                  width: width * 0.22,
+                  margin: EdgeInsets.only(right: width * 0.03),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: category['gradient'] as List<Color>,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (category['gradient'] as List<Color>)[0]
+                            .withOpacity(0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Icon with glow
+                      Container(
+                        padding: EdgeInsets.all(width * 0.03),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          category['icon'] as String,
+                          style: TextStyle(fontSize: width * 0.07),
+                        ),
+                      ),
+                      SizedBox(height: width * 0.02),
+                      Text(
+                        category['name'] as String,
+                        style: TextStyle(
+                          fontSize: width * 0.03,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -326,7 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {},
               child: Text(
                 'See All',
-                style: TextStyle(color: Colors.blue.shade900),
+                style: TextStyle(color: AppColors.primary),
               ),
             ),
           ],
@@ -408,9 +467,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           padding: EdgeInsets.all(width * 0.04),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.orange.shade400, Colors.red.shade400],
-            ),
+            gradient: AppColors.mainGradient,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -443,7 +500,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Text(
                   'Book Now',
-                  style: TextStyle(color: Colors.orange.shade800),
+                  style: TextStyle(color: AppColors.accentGold),
                 ),
               ),
             ],
@@ -487,13 +544,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: EdgeInsets.all(width * 0.03),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
+                    color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     item['price']!,
                     style: TextStyle(
-                      color: Colors.blue.shade900,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

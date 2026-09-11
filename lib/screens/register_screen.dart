@@ -4,6 +4,8 @@ import 'package:local_auth/local_auth.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'main_screen.dart';
+import '../utils/colors.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -266,7 +268,10 @@ class _RegisterScreenState extends State<RegisterScreen>
           ),
           backgroundColor: Colors.green,
         ));
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _isLoading = false);
@@ -415,9 +420,9 @@ class _RegisterScreenState extends State<RegisterScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF1A237E),
-                  Color(0xFF0D47A1),
-                  Color(0xFF00695C),
+                  AppColors.primaryDark,
+                  AppColors.primary,
+                  AppColors.primaryGreen,
                 ],
               ),
             ),
@@ -602,7 +607,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             ElevatedButton(
               onPressed: _setupBiometric,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF5A623),
+                backgroundColor: AppColors.accentGold,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 minimumSize: const Size(0, 32),
                 shape: RoundedRectangleBorder(
@@ -669,11 +674,11 @@ class _RegisterScreenState extends State<RegisterScreen>
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: const Color(0xFFF5A623),
+                    color: AppColors.accentGold,
                     width: 3,
                   ),
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFF5A623), Colors.orange],
+                    colors: [AppColors.accentGold, AppColors.accentOrange],
                   ),
                 ),
                 child: const Center(
@@ -713,16 +718,16 @@ class _RegisterScreenState extends State<RegisterScreen>
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF5A623).withOpacity(0.2),
+                  color: AppColors.accentGold.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFFF5A623).withOpacity(0.3),
+                    color: AppColors.accentGold.withOpacity(0.3),
                   ),
                 ),
                 child: Text(
                   'NEW',
                   style: TextStyle(
-                    color: const Color(0xFFF5A623),
+                    color: AppColors.accentGold,
                     fontSize: width * 0.03,
                     fontWeight: FontWeight.bold,
                   ),
@@ -811,11 +816,11 @@ class _RegisterScreenState extends State<RegisterScreen>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: active
-                ? const Color(0xFFF5A623)
+                ? AppColors.accentGold
                 : Colors.white.withOpacity(0.2),
             border: Border.all(
               color: active
-                  ? const Color(0xFFF5A623)
+                  ? AppColors.accentGold
                   : Colors.white.withOpacity(0.3),
               width: 2,
             ),
@@ -848,7 +853,7 @@ class _RegisterScreenState extends State<RegisterScreen>
       child: Container(
         height: 2,
         margin: const EdgeInsets.symmetric(horizontal: 4),
-        color: active ? const Color(0xFFF5A623) : Colors.white.withOpacity(0.2),
+        color: active ? AppColors.accentGold : Colors.white.withOpacity(0.2),
       ),
     );
   }
@@ -885,7 +890,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(
-            color: Color(0xFFF5A623),
+            color: AppColors.accentGold,
             width: 2,
           ),
         ),
@@ -934,7 +939,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
-                color: Color(0xFFF5A623),
+                color: AppColors.accentGold,
                 width: 2,
               ),
             ),
@@ -1043,7 +1048,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(
-            color: Color(0xFFF5A623),
+            color: AppColors.accentGold,
             width: 2,
           ),
         ),
@@ -1122,7 +1127,7 @@ class _RegisterScreenState extends State<RegisterScreen>
               Text(
                 '🌟 Choose your guide',
                 style: TextStyle(
-                  color: const Color(0xFFF5A623),
+                  color: AppColors.accentGold,
                   fontSize: width * 0.037,
                 ),
               ),
@@ -1148,19 +1153,19 @@ class _RegisterScreenState extends State<RegisterScreen>
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFFF5A623)
+                        ? AppColors.accentGold
                         : Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isSelected
-                          ? const Color(0xFFF5A623)
+                          ? AppColors.accentGold
                           : Colors.white.withOpacity(0.2),
                       width: 2,
                     ),
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: const Color(0xFFF5A623).withOpacity(0.3),
+                              color: AppColors.accentGold.withOpacity(0.3),
                               blurRadius: 10,
                             ),
                           ]
@@ -1254,12 +1259,12 @@ class _RegisterScreenState extends State<RegisterScreen>
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFFF5A623)
+                        ? AppColors.accentGold
                         : Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isSelected
-                          ? const Color(0xFFF5A623)
+                          ? AppColors.accentGold
                           : Colors.white.withOpacity(0.2),
                       width: 2,
                     ),
@@ -1316,7 +1321,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                 _termsAccepted = value ?? false;
               });
             },
-            activeColor: const Color(0xFFF5A623),
+            activeColor: AppColors.accentGold,
             checkColor: Colors.black,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(4),
@@ -1337,7 +1342,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                 TextSpan(
                   text: 'Terms of Service',
                   style: TextStyle(
-                    color: const Color(0xFFF5A623),
+                    color: AppColors.accentGold,
                     fontSize: width * 0.037,
                     fontWeight: FontWeight.bold,
                     decoration: TextDecoration.underline,
@@ -1353,7 +1358,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                 TextSpan(
                   text: 'Privacy Policy',
                   style: TextStyle(
-                    color: const Color(0xFFF5A623),
+                    color: AppColors.accentGold,
                     fontSize: width * 0.037,
                     fontWeight: FontWeight.bold,
                     decoration: TextDecoration.underline,
@@ -1378,15 +1383,15 @@ class _RegisterScreenState extends State<RegisterScreen>
         decoration: BoxDecoration(
           gradient: _isLoading
               ? null
-              : const LinearGradient(
-                  colors: [Color(0xFFF5A623), Colors.orange],
+              : LinearGradient(
+                  colors: [AppColors.accentGold, AppColors.accentOrange],
                 ),
           borderRadius: BorderRadius.circular(14),
           boxShadow: _isLoading
               ? []
               : [
                   BoxShadow(
-                    color: const Color(0xFFF5A623).withOpacity(0.3),
+                    color: AppColors.accentGold.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -1401,7 +1406,7 @@ class _RegisterScreenState extends State<RegisterScreen>
                 child: const Center(
                   child: CircularProgressIndicator(
                     valueColor:
-                        AlwaysStoppedAnimation<Color>(Color(0xFFF5A623)),
+                        AlwaysStoppedAnimation<Color>(AppColors.accentGold),
                   ),
                 ),
               )
@@ -1453,7 +1458,7 @@ class _RegisterScreenState extends State<RegisterScreen>
           child: Text(
             'Login',
             style: TextStyle(
-              color: Color(0xFFF5A623),
+              color: AppColors.accentGold,
               fontWeight: FontWeight.bold,
               fontSize: width * 0.045,
             ),

@@ -5,6 +5,8 @@ import 'package:local_auth/local_auth.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
+import 'main_screen.dart';
+import '../utils/colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -74,7 +76,10 @@ class _LoginScreenState extends State<LoginScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Navigate to home or auto-fill credentials
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -127,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              MaterialPageRoute(builder: (_) => const MainScreen()),
             );
           }
         });
@@ -279,9 +284,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF1A237E),
-                  Color(0xFF0D47A1),
-                  Color(0xFF00695C),
+                  AppColors.primaryDark,
+                  AppColors.primary,
+                  AppColors.primaryGreen,
                 ],
               ),
             ),
@@ -386,7 +391,7 @@ class _LoginScreenState extends State<LoginScreen> {
         color: Colors.white.withOpacity(0.1),
         shape: BoxShape.circle,
         border: Border.all(
-          color: const Color(0xFFF5A623).withOpacity(0.3),
+          color: AppColors.accentGold.withOpacity(0.3),
           width: 3,
         ),
       ),
@@ -449,7 +454,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFF5A623), width: 2),
+          borderSide: const BorderSide(color: AppColors.accentGold, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -493,7 +498,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFF5A623), width: 2),
+          borderSide: const BorderSide(color: AppColors.accentGold, width: 2),
         ),
       ),
     );
@@ -512,7 +517,7 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Text(
           'Forgot Password?',
           style: TextStyle(
-            color: const Color(0xFFF5A623).withOpacity(0.8),
+            color: AppColors.accentGold.withOpacity(0.8),
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -530,15 +535,15 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: BoxDecoration(
           gradient: _isLoading
               ? null
-              : const LinearGradient(
-            colors: [Color(0xFFF5A623), Colors.orange],
+              : LinearGradient(
+            colors: [AppColors.accentGold, AppColors.accentOrange],
           ),
           borderRadius: BorderRadius.circular(14),
           boxShadow: _isLoading
               ? []
               : [
             BoxShadow(
-              color: const Color(0xFFF5A623).withOpacity(0.3),
+              color: AppColors.accentGold.withOpacity(0.3),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -552,7 +557,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           child: const Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF5A623)),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentGold),
             ),
           ),
         )
@@ -674,7 +679,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Text(
             'Register',
             style: TextStyle(
-              color: Color(0xFFF5A623),
+              color: AppColors.accentGold,
               fontWeight: FontWeight.bold,
               fontSize: 16,
             ),

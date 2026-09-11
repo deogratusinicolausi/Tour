@@ -57,7 +57,7 @@ class _AnimatedTurivaButtonState extends State<AnimatedTurivaButton>
                 gradient: LinearGradient(
                   colors: widget.color != null
                       ? [widget.color!, widget.color!.withOpacity(0.8)]
-                      : [AppColors.primary, AppColors.gradientEnd],
+                      : [AppColors.primary, AppColors.primaryDark],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),

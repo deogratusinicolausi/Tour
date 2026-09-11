@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'login_screen.dart';
+import 'main_screen.dart';
+import '../utils/colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,7 +26,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (user != null) {
       // User is logged in - go to Home
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
     } else {
       // User is not logged in - go to Login
       Navigator.pushReplacement(
@@ -43,8 +48,8 @@ class _SplashScreenState extends State<SplashScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFF1A237E),
-              Color(0xFF0D47A1),
+              AppColors.primaryDark,
+              AppColors.primary,
               Color(0xFF4CAF50),
             ],
           ),
@@ -70,7 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: const Icon(
                   Icons.explore,
                   size: 80,
-                  color: Color(0xFF1A237E),
+                  color: AppColors.primaryDark,
                 ),
               ),
               const SizedBox(height: 30),
