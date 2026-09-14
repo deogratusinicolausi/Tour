@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lottie/lottie.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import 'profile_screen.dart';
 import '../utils/colors.dart';
 import 'category_screen.dart'; // Ensure this file exists
+import 'explore_all_screen.dart';
+import 'destination_details_screen.dart';
+import 'explore_all_screen.dart';
+import 'destination_details_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onProfileTap;
@@ -17,6 +22,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final AuthService _auth = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
   User? user;
 
   @override
@@ -262,7 +268,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             TextButton(
               onPressed: () {
-                // Navigate to all categories
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ExploreAllScreen(categoryFilter: '',)),
+                );
               },
               child: Text(
                 'See All',
@@ -349,24 +358,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFeaturedDestinations(double width, double height) {
-    final destinations = [
-      {
-        'name': 'Serengeti',
-        'image': 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=400',
-        'price': 'Starting at \$200'
-      },
-      {
-        'name': 'Zanzibar',
-        'image': 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400',
-        'price': 'Starting at \$150'
-      },
-      {
-        'name': 'Kilimanjaro',
-        'image': 'https://images.unsplash.com/photo-1544731612-de6a63c6cf1a?w=400',
-        'price': 'Starting at \$180'
-      },
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -382,7 +373,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const CategoryScreen(
+                      categoryName: 'Destinations',
+                      icon: '📍',
+                    ),
+                  ),
+                );
+              },
               child: Text(
                 'See All',
                 style: TextStyle(color: AppColors.primary),
@@ -393,55 +394,30 @@ class _HomeScreenState extends State<HomeScreen> {
         SizedBox(height: width * 0.02),
         SizedBox(
           height: width * 0.5,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: destinations.length,
-            itemBuilder: (context, index) {
-              final dest = destinations[index];
-              return Container(
-                width: width * 0.6,
-                margin: EdgeInsets.only(right: width * 0.03),
-                child: Stack(
-                  children: [
-                    _buildNetworkImage(dest['image']!, width * 0.6, width * 0.5),
-                    Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      colors: [Colors.black.withOpacity(0.5), Colors.transparent],
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.all(width * 0.04),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          dest['name']!,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: width * 0.045,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          dest['price']!,
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: width * 0.03,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                    ),
-                  ],
-                ),
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _firestoreService.getFeaturedDestinations(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              final destinations = snapshot.data ?? [];
+              if (destinations.isEmpty) {
+                return _buildEmptyState(
+                  'No featured destinations yet',
+                  'Add content from admin app',
+                  width,
+                );
+              }
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: destinations.length,
+                itemBuilder: (context, index) {
+                  final dest = destinations[index];
+                  return _buildDestinationCard(dest, width, height);
+                },
               );
             },
           ),
@@ -451,73 +427,287 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSpecialOffers(double width, double height) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '⭐ Special Offers',
-          style: TextStyle(
-            fontSize: width * 0.045,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade800,
+  Widget _buildDestinationCard(
+      Map<String, dynamic> dest, double width, double height) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DestinationDetailsScreen(destination: dest),
           ),
+        );
+      },
+      child: Container(
+        width: width * 0.6,
+        margin: EdgeInsets.only(right: width * 0.03),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
-        SizedBox(height: height * 0.015),
-        Container(
-          padding: EdgeInsets.all(width * 0.04),
-          decoration: BoxDecoration(
-            gradient: AppColors.mainGradient,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '🎉 20% OFF',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: width * 0.05,
-                      fontWeight: FontWeight.bold,
+        child: Stack(
+          children: [
+            // Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: (dest['imageUrl'] ?? '').toString().isNotEmpty
+                  ? Image.network(
+                dest['imageUrl'],
+                width: width * 0.6,
+                height: width * 0.5,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return Container(
+                    width: width * 0.6,
+                    height: width * 0.5,
+                    color: Colors.grey.shade200,
+                    child: const Center(
+                        child: CircularProgressIndicator()),
+                  );
+                },
+                errorBuilder: (_, __, ___) => Container(
+                  width: width * 0.6,
+                  height: width * 0.5,
+                  color: Colors.grey.shade200,
+                  child: const Icon(Icons.broken_image, size: 40),
+                ),
+              )
+                  : Container(
+                width: width * 0.6,
+                height: width * 0.5,
+                color: Colors.grey.shade300,
+                child: const Icon(Icons.image, size: 40),
+              ),
+            ),
+
+            // Gradient
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withOpacity(0.7),
+                      Colors.transparent,
+                    ],
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                  ),
+                ),
+              ),
+            ),
+
+            // Featured Badge
+            Positioned(
+              top: 10,
+              left: 10,
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.accentGold,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.star, size: 14, color: Colors.black),
+                    SizedBox(width: 4),
+                    Text(
+                      'FEATURED',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
                     ),
-                  ),
-                  const Text(
-                    'All Safari Packages',
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                ],
-              ),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  'Book Now',
-                  style: TextStyle(color: AppColors.accentGold),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+
+            // Info
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: EdgeInsets.all(width * 0.04),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      dest['name'] ?? 'Unnamed',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: width * 0.045,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if ((dest['location'] ?? '').toString().isNotEmpty) ...[
+                      SizedBox(height: height * 0.005),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on,
+                              color: Colors.white70, size: 14),
+                          SizedBox(width: width * 0.01),
+                          Expanded(
+                            child: Text(
+                              dest['location'],
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: width * 0.03,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: height * 0.025),
-      ],
+      ),
     );
   }
 
-  Widget _buildRecommendations(double width, double height) {
-    final recommendations = [
-      {'name': 'Ngorongoro Crater', 'type': 'Tour', 'price': '\$120'},
-      {'name': 'Lake Manyara', 'type': 'Safari', 'price': '\$90'},
-      {'name': 'Arusha National Park', 'type': 'Hiking', 'price': '\$75'},
-    ];
+  Widget _buildEmptyState(String title, String subtitle, double width) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.inbox, size: width * 0.15, color: Colors.grey.shade300),
+          SizedBox(height: width * 0.03),
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.bold,
+              fontSize: width * 0.035,
+            ),
+          ),
+          SizedBox(height: width * 0.01),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: width * 0.028,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildSpecialOffers(double width, double height) {
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _firestoreService.getFeaturedDeals(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox();
+        }
+        final deals = snapshot.data ?? [];
+        if (deals.isEmpty) return const SizedBox();
 
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '⭐ Special Offers',
+              style: TextStyle(
+                fontSize: width * 0.045,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            SizedBox(height: height * 0.015),
+            ...deals.take(2).map((deal) {
+              return Container(
+                margin: EdgeInsets.only(bottom: height * 0.015),
+                padding: EdgeInsets.all(width * 0.04),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.orange.shade400, Colors.red.shade400],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    // Image
+                    if ((deal['imageUrl'] ?? '').toString().isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          deal['imageUrl'],
+                          width: width * 0.15,
+                          height: width * 0.15,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: width * 0.15,
+                            height: width * 0.15,
+                            color: Colors.white.withOpacity(0.2),
+                            child: const Icon(Icons.card_giftcard,
+                                color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    SizedBox(width: width * 0.03),
+
+                    // Info
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '🎉 ${deal['discount'] ?? 0}% OFF',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: width * 0.045,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            deal['title'] ?? '',
+                            style: const TextStyle(color: Colors.white70),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Price
+                    if (deal['salePrice'] != null)
+                      Text(
+                        '${deal['currency'] ?? 'USD'} ${(deal['salePrice'] as num).toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: width * 0.04,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
+            SizedBox(height: height * 0.025),
+          ],
+        );
+      },
+    );
+  }
+  Widget _buildRecommendations(double width, double height) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -530,61 +720,102 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         SizedBox(height: height * 0.015),
-        ...recommendations.map((item) {
-          return Container(
-            margin: EdgeInsets.only(bottom: height * 0.015),
-            padding: EdgeInsets.all(width * 0.03),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Row(
-              children: [
-                Container(
+        StreamBuilder<List<Map<String, dynamic>>>(
+          stream: _firestoreService.getTours(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final tours = snapshot.data ?? [];
+            if (tours.isEmpty) {
+              return _buildEmptyState(
+                'No tours yet',
+                'Add content from admin app',
+                width,
+              );
+            }
+            return Column(
+              children: tours.take(3).map((item) {
+                return Container(
+                  margin: EdgeInsets.only(bottom: height * 0.015),
                   padding: EdgeInsets.all(width * 0.03),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
-                  child: Text(
-                    item['price']!,
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                SizedBox(width: width * 0.04),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        item['name']!,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: width * 0.04,
+                      // Image
+                      if ((item['images'] as List?)?.isNotEmpty ?? false)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            (item['images'] as List).first,
+                            width: width * 0.15,
+                            height: width * 0.15,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: width * 0.15,
+                              height: width * 0.15,
+                              color: Colors.grey.shade200,
+                              child: const Icon(Icons.broken_image),
+                            ),
+                          ),
+                        ),
+                      SizedBox(width: width * 0.04),
+
+                      // Info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['name'] ?? 'Unnamed',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: width * 0.04,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: height * 0.005),
+                            Text(
+                              item['tourType'] ?? 'Tour',
+                              style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: width * 0.03),
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        item['type']!,
-                        style: TextStyle(color: Colors.grey.shade600),
+
+                      // Price
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: width * 0.025,
+                            vertical: height * 0.008),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${item['currency'] ?? 'USD'} ${(item['price'] as num?)?.toStringAsFixed(0) ?? '0'}',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: width * 0.03,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.grey.shade400,
-                  size: width * 0.04,
-                ),
-              ],
-            ),
-          );
-        }),
+                );
+              }).toList(),
+            );
+          },
+        ),
         SizedBox(height: height * 0.025),
       ],
     );
-  }
-}
+  }}

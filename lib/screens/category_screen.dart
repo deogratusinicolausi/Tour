@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../utils/colors.dart';
 import '../services/image_service.dart';
+import 'hotels_list_screen.dart';
+import 'explore_all_screen.dart';
 
 class CategoryScreen extends StatefulWidget {
   final String categoryName;
@@ -22,6 +24,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   String _selectedRegion = 'Tanzania';
   bool _isSearching = false;
   bool _isLoadingRegion = false;
+  final Map<String, int> _galleryIndices = {};
 
   // All data organized by region
   final Map<String, List<Map<String, String>>> _data = {
@@ -758,7 +761,23 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   Widget _buildCard(Map<String, String> item, double width, double height) {
    return GestureDetector(
-     onTap: () => _openUrl(item['url']!),
+     onTap: () {
+       if (widget.categoryName == 'Hotels') {
+         Navigator.push(
+           context,
+           MaterialPageRoute(builder: (_) => const HotelsListScreen()),
+         );
+       } else {
+         Navigator.push(
+           context,
+           MaterialPageRoute(
+             builder: (_) => ExploreAllScreen(
+               categoryFilter: widget.categoryName,
+             ),
+           ),
+         );
+       }
+     },
      child: Container(
        margin: EdgeInsets.only(bottom: height * 0.02),
        decoration: BoxDecoration(
@@ -831,106 +850,149 @@ class _CategoryScreenState extends State<CategoryScreen> {
  }
 
  Widget _buildImageGallery(String query, double width, double height) {
-   return FutureBuilder<List<Map<String, dynamic>>>(
-     future: ImageService().searchPhotos(query),
-     builder: (context, snapshot) {
-       // ⭐ LOADING
-       if (snapshot.connectionState == ConnectionState.waiting) {
-         return Container(
-           height: height * 0.22,
-           color: Colors.grey.shade100,
-           child: const Center(
-             child: Column(
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: [
-                 CircularProgressIndicator(color: Color(0xFF0D47A1)),
-                 SizedBox(height: 10),
-                 Text('Loading from Pexels...',
-                     style: TextStyle(color: Colors.grey, fontSize: 12)),
-               ],
-             ),
-           ),
-         );
-       }
-
-       // ⭐ ERROR
-       if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-         return Container(
-           height: height * 0.22,
-           color: Colors.grey.shade100,
-           child: const Center(
-             child: Column(
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: [
-                 Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                 SizedBox(height: 5),
-                 Text('No images from Pexels',
-                     style: TextStyle(color: Colors.grey, fontSize: 12)),
-               ],
-             ),
-           ),
-         );
-       }
-
-       // ⭐ SHOW FIRST IMAGE
-       final photos = snapshot.data!;
-       return SizedBox(
-         height: height * 0.22,
-         child: Stack(
-           children: [
-             Image.network(
-               photos[0]['src']['large'],
-               height: height * 0.22,
-               width: double.infinity,
-               fit: BoxFit.cover,
-               loadingBuilder: (context, child, progress) {
-                 if (progress == null) return child;
-                 return Container(
-                   height: height * 0.22,
-                   color: Colors.grey.shade100,
-                   child: Center(
-                     child: CircularProgressIndicator(
-                       value: progress.expectedTotalBytes != null
-                           ? progress.cumulativeBytesLoaded /
-                               progress.expectedTotalBytes!
-                           : null,
-                       color: const Color(0xFF0D47A1),
-                     ),
-                   ),
-                 );
-               },
-               errorBuilder: (_, __, ___) => Container(
-                 color: Colors.grey.shade200,
-                 child: const Icon(Icons.broken_image, color: Colors.grey),
-               ),
-             ),
-             // Badge
-             Positioned(
-               top: 10,
-               right: 10,
-               child: Container(
-                 padding:
-                     const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                 decoration: BoxDecoration(
-                   color: Colors.black.withOpacity(0.6),
-                   borderRadius: BorderRadius.circular(15),
-                 ),
-                 child: Row(
-                   children: [
-                     const Icon(Icons.photo_library,
-                         color: Colors.white, size: 14),
-                     const SizedBox(width: 5),
-                     Text('${photos.length} photos',
-                         style: const TextStyle(
-                             color: Colors.white, fontSize: 11)),
-                   ],
-                 ),
-               ),
-             ),
-           ],
-         ),
-       );
-     },
-   );
+   return _CardImageGallery(query: query, height: height * 0.25);
  }
+}
+
+class _CardImageGallery extends StatefulWidget {
+  final String query;
+  final double height;
+
+  const _CardImageGallery({required this.query, required this.height});
+
+  @override
+  State<_CardImageGallery> createState() => _CardImageGalleryState();
+}
+
+class _CardImageGalleryState extends State<_CardImageGallery> {
+  Future<List<Map<String, dynamic>>>? _future;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = ImageService().searchPhotos(widget.query);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CardImageGallery oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.query != widget.query) {
+      _future = ImageService().searchPhotos(widget.query);
+      _currentIndex = 0;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _future,
+      builder: (context, snapshot) {
+        // ⭐ LOADING
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Container(
+            height: widget.height,
+            color: Colors.grey.shade100,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFF0D47A1)),
+                  SizedBox(height: 10),
+                  Text('Loading from Pexels...',
+                      style: TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // ⭐ ERROR
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          return Container(
+            height: widget.height,
+            color: Colors.grey.shade100,
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                  SizedBox(height: 5),
+                  Text('No images from Pexels',
+                      style: TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // ⭐ SHOW IMAGE GALLERY (Swipeable Carousel)
+        final photos = snapshot.data!;
+        final displayCount = photos.length > 5 ? 5 : photos.length;
+
+        return Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            SizedBox(
+              height: widget.height,
+              child: PageView.builder(
+                itemCount: displayCount,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentIndex = index;
+                  });
+                },
+                itemBuilder: (context, index) {
+                  return Image.network(
+                    photos[index]['src']['large'],
+                    height: widget.height,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        height: widget.height,
+                        color: Colors.grey.shade100,
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFF0D47A1),
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => Container(
+                      height: widget.height,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.broken_image, color: Colors.grey),
+                    ),
+                  );
+                },
+              ),
+            ),
+            if (displayCount > 1)
+              Positioned(
+                bottom: 10,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(displayCount, (index) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: _currentIndex == index ? 12 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: _currentIndex == index
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'home_screen.dart';
+import 'my_wishlist_screen.dart';
 import 'profile_screen.dart';
 import '../utils/colors.dart';
 
@@ -16,16 +17,16 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    const HomeScreen(),
-    const HomeScreen(),
+    const HomeScreen(), // Explore - baadaye
+    const MyWishlistScreen(), // ⭐ Wishlist
     const ProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      extendBody: true, // ⭐ Must be TRUE
+      backgroundColor: Colors.white,
+      extendBody: true,
       body: _pages[_selectedIndex],
       bottomNavigationBar: CurvedNavigationBar(
         index: _selectedIndex,
@@ -33,10 +34,10 @@ class _MainScreenState extends State<MainScreen> {
         items: const <Widget>[
           HoverIcon(icon: Icons.home),
           HoverIcon(icon: Icons.search),
-          HoverIcon(icon: Icons.favorite),
+          HoverIcon(icon: Icons.favorite_border),
           HoverIcon(icon: Icons.person),
         ],
-        color: Colors.black,
+        color: Colors.white,
         buttonBackgroundColor: const Color(0xFFF5A623),
         backgroundColor: Colors.transparent,
         animationCurve: Curves.easeInOutCubic,

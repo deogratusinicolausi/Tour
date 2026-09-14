@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.turiva"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "25.1.8937393"  // ✅ ADDED
+    ndkVersion = "28.2.13676358"  // ✅ ADDED
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

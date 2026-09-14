@@ -7,7 +7,7 @@ class ImageService {
   static const String _pixabayKey = '57549213-d3ce1ff67cf19fca20bbb643f';
 
   // ⭐️ Chagua API unayotaka kutumia
-  static const String _primaryApi = 'pexels'; // au 'pixabay'
+  static const String _primaryApi = 'pixabay'; // au 'pixabay'
 
   Future<List<Map<String, dynamic>>> searchPhotos(String query) async {
     if (_primaryApi == 'pixabay') {
@@ -39,6 +39,7 @@ class ImageService {
       // Pixabay inarudisha format tofauti - badilisha iwe sawa na Pexels
       return (data['hits'] as List).map((item) {
         return {
+          'id': item['id'].toString(),
           'src': {
             'large': item['largeImageURL'],
             'medium': item['webformatURL'],
