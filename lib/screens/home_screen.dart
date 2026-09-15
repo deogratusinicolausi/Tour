@@ -3,13 +3,21 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lottie/lottie.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import 'hotels_list_screen.dart';
 import 'profile_screen.dart';
 import '../utils/colors.dart';
-import 'category_screen.dart'; // Ensure this file exists
 import 'explore_all_screen.dart';
 import 'destination_details_screen.dart';
-import 'explore_all_screen.dart';
-import 'destination_details_screen.dart';
+import 'tours_list_screen.dart';
+import 'beaches_list_screen.dart';
+import 'mountains_list_screen.dart';
+import 'culture_list_screen.dart';
+import 'food_list_screen.dart';
+import 'deals_list_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/notification_service.dart';
+import 'notifications_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onProfileTap;
@@ -42,6 +50,56 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
+          Builder(builder: (context) {
+            final _notifService = NotificationService();
+            final _user = FirebaseAuth.instance.currentUser;
+
+            if (_user != null) {
+              return StreamBuilder<int>(
+                stream: _notifService.getUnreadCount(_user.uid),
+                builder: (context, snapshot) {
+                  final count = snapshot.data ?? 0;
+                  return Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined,
+                            color: Colors.black),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const NotificationsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      if (count > 0)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Text(
+                              count > 99 ? '99+' : '$count',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              );
+            }
+            return const SizedBox.shrink();
+          }),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.black),
             onPressed: _logout,
@@ -270,13 +328,10 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => ExploreAllScreen(categoryFilter: '',)),
+                  MaterialPageRoute(builder: (_) => const ExploreAllScreen(categoryFilter: '',)),
                 );
               },
-              child: Text(
-                'See All',
-                style: TextStyle(color: AppColors.primary),
-              ),
+              child: Text('See All', ),
             ),
           ],
         ),
@@ -289,71 +344,48 @@ class _HomeScreenState extends State<HomeScreen> {
             scrollDirection: Axis.horizontal,
             itemCount: categories.length,
             itemBuilder: (context, index) {
-              final category = categories[index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CategoryScreen(
-                        categoryName: category['name'] as String,
-                        icon: category['icon'] as String,
-                      ),
-                    ),
-                  );
-                },
-                child: Container(
-                  width: width * 0.22,
-                  margin: EdgeInsets.only(right: width * 0.03),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: category['gradient'] as List<Color>,
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (category['gradient'] as List<Color>)[0]
-                            .withOpacity(0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Icon with glow
-                      Container(
-                        padding: EdgeInsets.all(width * 0.03),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Text(
-                          category['icon'] as String,
-                          style: TextStyle(fontSize: width * 0.07),
-                        ),
-                      ),
-                      SizedBox(height: width * 0.02),
-                      Text(
-                        category['name'] as String,
-                        style: TextStyle(
-                          fontSize: width * 0.03,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              return _CategoryCard(
+                category: categories[index],
+                onTap: () => _handleCategoryTap(categories[index]),
               );
             },
           ),
         ),
         SizedBox(height: width * 0.04),
       ],
+    );
+  }
+
+  void _handleCategoryTap(Map<String, dynamic> category) {
+    Widget screen;
+    switch (category['name']) {
+      case 'Hotels':
+        screen = const HotelsListScreen();
+        break;
+      case 'Safari':
+        screen = const ToursListScreen();
+        break;
+      case 'Beaches':
+        screen = const BeachesListScreen();
+        break;
+      case 'Mountains':
+        screen = const MountainsListScreen();
+        break;
+      case 'Culture':
+        screen = const CultureListScreen();
+        break;
+      case 'Food':
+        screen = const FoodListScreen();
+        break;
+        // Baadaye specialized screens can be added here
+        screen = const HotelsListScreen();
+        break;
+      default:
+        screen = const HotelsListScreen();
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => screen),
     );
   }
 
@@ -372,23 +404,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.grey.shade800,
               ),
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CategoryScreen(
-                      categoryName: 'Destinations',
-                      icon: '📍',
-                    ),
-                  ),
-                );
-              },
-              child: Text(
-                'See All',
-                style: TextStyle(color: AppColors.primary),
-              ),
-            ),
+            // TextButton(
+            //   onPressed: () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (_) => const CategoryScreen(
+            //           categoryName: 'Destinations',
+            //           icon: '📍',
+            //         ),
+            //       ),
+            //     );
+            //   },
+            //   child: Text(
+            //     'See All',
+            //     style: TextStyle(color: AppColors.primary),
+            //   ),
+            // ),
           ],
         ),
         SizedBox(height: width * 0.02),
@@ -701,6 +733,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
             }),
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DealsListScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade700,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('View All Special Deals'),
+              ),
+            ),
             SizedBox(height: height * 0.025),
           ],
         );
@@ -819,3 +869,85 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }}
+
+class _CategoryCard extends StatefulWidget {
+  final Map<String, dynamic> category;
+  final VoidCallback onTap;
+  const _CategoryCard({required this.category, required this.onTap});
+
+  @override
+  State<_CategoryCard> createState() => _CategoryCardState();
+}
+
+class _CategoryCardState extends State<_CategoryCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          transform: Matrix4.identity()..scale(_isHovered ? 1.05 : 1.0),
+          width: width * 0.22,
+          margin: EdgeInsets.only(right: width * 0.03),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: widget.category['gradient'] as List<Color>,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: _isHovered
+                ? [
+                    BoxShadow(
+                      color: (widget.category['gradient'] as List<Color>)[0]
+                          .withOpacity(0.5),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : [
+                    BoxShadow(
+                      color: (widget.category['gradient'] as List<Color>)[0]
+                          .withOpacity(0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: EdgeInsets.all(width * 0.03),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  widget.category['icon'] as String,
+                  style: TextStyle(fontSize: width * 0.07),
+                ),
+              ),
+              SizedBox(height: width * 0.02),
+              Text(
+                widget.category['name'] as String,
+                style: TextStyle(
+                  fontSize: width * 0.03,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

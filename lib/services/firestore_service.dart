@@ -8,12 +8,26 @@ class FirestoreService {
   Stream<List<Map<String, dynamic>>> getDestinations() {
     return _firestore
         .collection('destinations')
-        .where('status', isEqualTo: 'active')
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data()})
-        .toList());
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((d) => d['status'] == 'active' || d['status'] == null)
+          .toList();
+
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+
+      return list;
+    });
   }
 
   Stream<List<Map<String, dynamic>>> getFeaturedDestinations() {
@@ -34,35 +48,52 @@ class FirestoreService {
         .collection('destinations')
         .where('status', isEqualTo: 'active')
         .where('country', isEqualTo: country)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data()})
-        .toList());
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .toList();
+
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+
+      return list;
+    });
   }
 
   // ⭐️ ===== HOTELS =====
 
-  Stream<List<Map<String, dynamic>>> getHotels() {
-    return _firestore
-        .collection('hotels')
-        .snapshots()
-        .map((snapshot) {
-      print('🔥 Hotels found: ${snapshot.docs.length}');
-      return snapshot.docs
-          .map((doc) => {'id': doc.id, ...doc.data()})
-          .toList();
-    });
-  }
 
   Stream<List<Map<String, dynamic>>> getHotelsOrdered() {
     return _firestore
         .collection('hotels')
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data()})
-        .toList());
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .toList();
+
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+
+      return list;
+    });
   }
 
   Stream<List<Map<String, dynamic>>> getFeaturedHotels() {
@@ -81,12 +112,138 @@ class FirestoreService {
   Stream<List<Map<String, dynamic>>> getTours() {
     return _firestore
         .collection('tours')
-        .where('status', isEqualTo: 'active')
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data()})
-        .toList());
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((t) => t['status'] == 'active' || t['status'] == null)
+          .toList();
+
+      // Sort client-side
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          // Compare timestamps or dates
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+
+      return list;
+    });
+  }
+
+  // ⭐️ BEACHES — kutoka admin
+  Stream<List<Map<String, dynamic>>> getBeaches() {
+    return _firestore
+        .collection('beaches')
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((b) => b['status'] == 'active' || b['status'] == null)
+          .toList();
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+      return list;
+    });
+  }
+
+// ⭐️ Single beach
+  Future<Map<String, dynamic>?> getBeach(String id) async {
+    try {
+      final doc = await _firestore.collection('beaches').doc(id).get();
+      if (doc.exists) {
+        return {'id': doc.id, ...doc.data()!};
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ⭐️ MOUNTAINS — kutoka admin
+  Stream<List<Map<String, dynamic>>> getMountains() {
+    return _firestore
+        .collection('mountains')
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((m) => m['status'] == 'active' || m['status'] == null)
+          .toList();
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+      return list;
+    });
+  }
+
+  // ⭐️ CULTURE — kutoka admin
+  Stream<List<Map<String, dynamic>>> getCulture() {
+    return _firestore
+        .collection('culture')
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((c) => c['status'] == 'active' || c['status'] == null)
+          .toList();
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+      return list;
+    });
+  }
+
+
+  // ⭐️ FOOD — kutoka admin
+  Stream<List<Map<String, dynamic>>> getFood() {
+    return _firestore
+        .collection('food')
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((f) => f['status'] == 'active' || f['status'] == null)
+          .toList();
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+      return list;
+    });
   }
 
   Stream<List<Map<String, dynamic>>> getFeaturedTours() {
@@ -101,42 +258,67 @@ class FirestoreService {
         .toList());
   }
 
-  // ⭐️ ===== ACTIVITIES =====
 
-  Stream<List<Map<String, dynamic>>> getActivities() {
-    return _firestore
-        .collection('activities')
-        .where('status', isEqualTo: 'active')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data()})
-        .toList());
-  }
-
-  // ⭐️ ===== DEALS =====
-
+  // ⭐️ DEALS — kutoka admin
   Stream<List<Map<String, dynamic>>> getDeals() {
     return _firestore
         .collection('deals')
-        .where('status', isEqualTo: 'active')
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data()})
-        .toList());
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((d) => d['status'] == 'active' || d['status'] == null)
+          .toList();
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+      return list;
+    });
   }
 
   Stream<List<Map<String, dynamic>>> getFeaturedDeals() {
     return _firestore
         .collection('deals')
-        .where('status', isEqualTo: 'active')
         .where('featured', isEqualTo: true)
-        .limit(5)
         .snapshots()
         .map((snapshot) => snapshot.docs
         .map((doc) => {'id': doc.id, ...doc.data()})
+        .where((d) => d['status'] == 'active' || d['status'] == null)
         .toList());
+  }
+
+  // ⭐️ ===== ACTIVITIES =====
+
+  Stream<List<Map<String, dynamic>>> getActivities() {
+    return _firestore
+        .collection('activities')
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((a) => a['status'] == 'active' || a['status'] == null)
+          .toList();
+
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+
+      return list;
+    });
   }
 
   // ⭐️ ===== SEARCH =====
@@ -185,6 +367,46 @@ class FirestoreService {
     }
 
     return results;
+  }
+
+  // ⭐️ HOTELS — Real-time kutoka admin
+  Stream<List<Map<String, dynamic>>> getHotels() {
+    return _firestore
+        .collection('hotels')
+        .snapshots()
+        .map((snapshot) {
+      final list = snapshot.docs
+          .map((doc) => {'id': doc.id, ...doc.data()})
+          .where((h) => h['status'] == 'active' || h['status'] == null)
+          .toList();
+
+      list.sort((a, b) {
+        final aDate = a['createdAt'];
+        final bDate = b['createdAt'];
+        if (aDate == null || bDate == null) return 0;
+        try {
+          return (bDate as dynamic).compareTo(aDate as dynamic);
+        } catch (e) {
+          return 0;
+        }
+      });
+
+      return list;
+    });
+  }
+
+// ⭐️ Single hotel details
+  Future<Map<String, dynamic>?> getHotel(String id) async {
+    try {
+      final doc = await _firestore.collection('hotels').doc(id).get();
+      if (doc.exists) {
+        return {'id': doc.id, ...doc.data()!};
+      }
+      return null;
+    } catch (e) {
+      print('🔥 Error getting hotel: $e');
+      return null;
+    }
   }
   Future<Map<String, int>> getBookingStats() async {
     try {

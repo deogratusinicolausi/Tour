@@ -8,6 +8,20 @@ class BookingService {
     try {
       DocumentReference ref =
       await _firestore.collection('bookings').add(booking.toMap());
+      // ⭐️ Send notification to admin
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'userId': 'admin',
+        'title': '📅 New Booking!',
+        'body': '${booking.userName} booked ${booking.itemName}',
+        'type': 'booking',
+        'category': 'success',
+        'icon': '📅',
+        'actionType': 'open_booking',
+        'actionId': booking.itemId,
+        'isRead': false,
+        'isPushed': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
       await _firestore.collection('activities').add({
         'type': 'booking',
@@ -21,6 +35,32 @@ class BookingService {
         'itemType': booking.itemType,
         'icon': '📅',
         'createdAt': FieldValue.serverTimestamp(),
+      }
+
+
+
+
+
+      );
+      // ⭐️ Create payment record
+      await _firestore.collection('payments').add({
+        'userId': booking.userId,
+        'userName': booking.userName,
+        'userEmail': booking.userEmail,
+        'userPhone': booking.userPhone,
+        'bookingId': ref.id,
+        'itemId': booking.itemId,
+        'itemType': booking.itemType,
+        'itemName': booking.itemName,
+        'amount': booking.amount,
+        'currency': booking.currency,
+        'method': booking.paymentMethod.isNotEmpty ? booking.paymentMethod : 'cash',
+        'status': 'pending',
+        'transactionId': '',
+        'reference': '',
+        'notes': '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       return ref.id;
@@ -29,6 +69,7 @@ class BookingService {
       return null;
     }
   }
+
 
   Stream<List<BookingModel>> getUserBookings(String userId) {
     return _firestore
@@ -58,5 +99,7 @@ class BookingService {
     } catch (e) {
       return false;
     }
+
   }
+
 }

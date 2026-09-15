@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'national_parks_screen.dart';
 import '../utils/colors.dart';
+import 'chat_list_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -175,6 +176,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                       // 🆕 PROFILE FORM
                       _buildProfileForm(width, height),
+                      SizedBox(height: height * 0.03),
+
+                      // 🆕 MY REVIEWS BUTTON
+                      GestureDetector(
+                        onTap: () {
+                          // Navigate to user reviews
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(width * 0.04),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(width * 0.03),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentGold.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.rate_review,
+                                    color: AppColors.accentGold,
+                                    size: width * 0.05),
+                              ),
+                              SizedBox(width: width * 0.03),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('My Reviews',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: width * 0.038,
+                                          color: Colors.black87,
+                                        )),
+                                    Text('View your reviews',
+                                        style: TextStyle(
+                                          fontSize: width * 0.028,
+                                          color: Colors.grey.shade500,
+                                        )),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.arrow_forward_ios,
+                                  size: width * 0.035,
+                                  color: Colors.grey.shade400),
+                            ],
+                          ),
+                        ),
+                      ),
                       SizedBox(height: height * 0.03),
 
                       // 🆕 TRAVEL MEMORIES
@@ -376,6 +434,64 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ChatListScreen(),
+                ),
+              );
+            },
+            child: Container(
+              margin: EdgeInsets.only(bottom: height * 0.01),
+              padding: EdgeInsets.all(width * 0.04),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(width * 0.03),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.chat_bubble_outline,
+                        color: AppColors.primary, size: width * 0.05),
+                  ),
+                  SizedBox(width: width * 0.03),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Messages',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: width * 0.038,
+                              color: Colors.grey.shade800,
+                            )),
+                        Text('Chat with TURIVA Support',
+                            style: TextStyle(
+                              fontSize: width * 0.028,
+                              color: Colors.grey.shade500,
+                            )),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios,
+                      size: width * 0.035, color: Colors.grey.shade400),
+                ],
+              ),
+            ),
+          ),
           Text(
             '👤 Profile Settings',
             style: TextStyle(

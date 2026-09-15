@@ -4,6 +4,11 @@ import '../utils/colors.dart';
 import '../services/image_service.dart';
 import 'hotels_list_screen.dart';
 import 'explore_all_screen.dart';
+import 'tours_list_screen.dart';
+import 'beaches_list_screen.dart';
+import 'mountains_list_screen.dart';
+import 'culture_list_screen.dart';
+import 'food_list_screen.dart';
 
 class CategoryScreen extends StatefulWidget {
   final String categoryName;
@@ -767,15 +772,42 @@ class _CategoryScreenState extends State<CategoryScreen> {
            context,
            MaterialPageRoute(builder: (_) => const HotelsListScreen()),
          );
+       } else if (widget.categoryName == 'Safari') {
+         Navigator.push(
+           context,
+           MaterialPageRoute(builder: (_) => const ToursListScreen()),
+         );
+       } else if (widget.categoryName == 'Beaches') {
+         Navigator.push(
+           context,
+           MaterialPageRoute(builder: (_) => const BeachesListScreen()),
+         );
+       } else if (widget.categoryName == 'Mountains') {
+         Navigator.push(
+           context,
+           MaterialPageRoute(builder: (_) => const MountainsListScreen()),
+         );
+       } else if (widget.categoryName == 'Culture') {
+         Navigator.push(
+           context,
+           MaterialPageRoute(builder: (_) => const CultureListScreen()),
+         );
+       } else if (widget.categoryName == 'Food') {
+         Navigator.push(
+           context,
+           MaterialPageRoute(builder: (_) => const FoodListScreen()),
+         );
        } else {
          Navigator.push(
            context,
            MaterialPageRoute(
-             builder: (_) => ExploreAllScreen(
-               categoryFilter: widget.categoryName,
+             builder: (_) => CategoryScreen(
+               categoryName: widget.categoryName,
+               icon: widget.icon,
              ),
            ),
          );
+
        }
      },
      child: Container(

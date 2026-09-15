@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/colors.dart';
 import '../services/image_service.dart';
 import 'category_screen.dart';
+import 'hotels_list_screen.dart';
 
 class ExploreAllScreen extends StatefulWidget {
-  const ExploreAllScreen({super.key, required String categoryFilter});
+  final String categoryFilter;
+  const ExploreAllScreen({super.key, required this.categoryFilter});
 
   @override
   State<ExploreAllScreen> createState() => _ExploreAllScreenState();
@@ -81,16 +84,12 @@ class _ExploreAllScreenState extends State<ExploreAllScreen> {
     {'name': 'Pasta', 'category': 'Food', 'region': 'World', 'location': 'Italy', 'url': 'https://www.italia.it'},
   ];
 
-  List<Map<String, String>> get _filteredList {
-    return allDestinations.where((item) {
-      final matchCategory = _selectedCategory == 'All' ||
-          item['category'] == _selectedCategory;
-      final matchRegion = item['region'] == _selectedRegion;
-      final matchSearch = _searchController.text.isEmpty ||
-          item['name']!.toLowerCase().contains(_searchController.text.toLowerCase()) ||
-          item['location']!.toLowerCase().contains(_searchController.text.toLowerCase());
-      return matchCategory && matchRegion && matchSearch;
-    }).toList();
+  @override
+  void initState() {
+    super.initState();
+    if (widget.categoryFilter.isNotEmpty && widget.categoryFilter != 'All') {
+      _selectedCategory = widget.categoryFilter;
+    }
   }
 
   String _getIconForCategory(String category) {
@@ -288,51 +287,82 @@ class _ExploreAllScreenState extends State<ExploreAllScreen> {
 
             SizedBox(height: height * 0.015),
 
-            // ===== COUNT =====
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: width * 0.05),
-              child: Row(
-                children: [
-                  Text(
-                    '${_filteredList.length} results in $_selectedRegion',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: width * 0.035,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: height * 0.01),
-
-            // ===== LIST =====
+            // ===== COUNT & LIST FROM FIRESTORE =====
             Expanded(
-              child: _filteredList.isEmpty
-                  ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.search_off, size: width * 0.2, color: Colors.grey.shade300),
-                    SizedBox(height: height * 0.02),
-                    Text(
-                      'No results found',
-                      style: TextStyle(
-                        fontSize: width * 0.05,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.bold,
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance.collection('destinations').snapshots(),
+                builder: (context, snapshot) {
+                  final currentDestinations = (snapshot.hasData && snapshot.data!.docs.isNotEmpty)
+                      ? snapshot.data!.docs.map((doc) {
+                          final data = doc.data();
+                          return {
+                            'name': data['name']?.toString() ?? '',
+                            'category': data['category']?.toString() ?? '',
+                            'region': data['region']?.toString() ?? '',
+                            'location': data['location']?.toString() ?? '',
+                            'url': data['url']?.toString() ?? '',
+                          };
+                        }).toList()
+                      : allDestinations;
+
+                  final filteredList = currentDestinations.where((item) {
+                    final matchCategory = _selectedCategory == 'All' ||
+                        item['category'] == _selectedCategory;
+                    final matchRegion = item['region'] == _selectedRegion;
+                    final matchSearch = _searchController.text.isEmpty ||
+                        item['name']!.toLowerCase().contains(_searchController.text.toLowerCase()) ||
+                        item['location']!.toLowerCase().contains(_searchController.text.toLowerCase());
+                    return matchCategory && matchRegion && matchSearch;
+                  }).toList();
+
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: width * 0.05),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${filteredList.length} results in $_selectedRegion',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: width * 0.035,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              )
-                  : ListView.builder(
-                padding: EdgeInsets.symmetric(horizontal: width * 0.05),
-                itemCount: _filteredList.length,
-                itemBuilder: (context, index) {
-                  final item = _filteredList[index];
-                  return _buildCard(item, width, height);
+                      SizedBox(height: height * 0.01),
+                      Expanded(
+                        child: filteredList.isEmpty
+                            ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.search_off, size: width * 0.2, color: Colors.grey.shade300),
+                              SizedBox(height: height * 0.02),
+                              Text(
+                                'No results found',
+                                style: TextStyle(
+                                  fontSize: width * 0.05,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                            : ListView.builder(
+                          padding: EdgeInsets.symmetric(horizontal: width * 0.05),
+                          itemCount: filteredList.length,
+                          itemBuilder: (context, index) {
+                            final item = filteredList[index];
+                            return _buildCard(item, width, height);
+                          },
+                        ),
+                      ),
+                    ],
+                  );
                 },
               ),
             ),
@@ -344,7 +374,16 @@ class _ExploreAllScreenState extends State<ExploreAllScreen> {
 
   Widget _buildCard(Map<String, String> item, double width, double height) {
     return GestureDetector(
-      onTap: () => _openUrl(item['url']!),
+      onTap: () {
+        if (item['category'] == 'Hotels') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const HotelsListScreen()),
+          );
+        } else {
+          _openUrl(item['url']!);
+        }
+      },
       child: Container(
         margin: EdgeInsets.only(bottom: height * 0.02),
         padding: EdgeInsets.all(width * 0.03),

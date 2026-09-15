@@ -4,6 +4,10 @@ import 'home_screen.dart';
 import 'my_wishlist_screen.dart';
 import 'profile_screen.dart';
 import '../utils/colors.dart';
+import 'trip_cart_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/notification_service.dart';
+import 'notifications_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,6 +23,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const HomeScreen(), // Explore - baadaye
     const MyWishlistScreen(), // ⭐ Wishlist
+    const TripCartScreen(), // ⭐ Cart
     const ProfileScreen(),
   ];
 
@@ -35,6 +40,7 @@ class _MainScreenState extends State<MainScreen> {
           HoverIcon(icon: Icons.home),
           HoverIcon(icon: Icons.search),
           HoverIcon(icon: Icons.favorite_border),
+          HoverIcon(icon: Icons.shopping_cart_outlined), // ⭐ Cart
           HoverIcon(icon: Icons.person),
         ],
         color: Colors.white,

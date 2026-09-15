@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:local_auth/local_auth.dart';
 // import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../services/auth_service.dart';
@@ -257,6 +258,20 @@ class _RegisterScreenState extends State<RegisterScreen>
       setState(() => _isLoading = false);
 
       if (user != null) {
+        // Send admin notification
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'userId': 'admin',
+          'title': '👤 New User Registered!',
+          'body': '${_nameController.text.trim()} just created an account',
+          'type': 'user',
+          'category': 'info',
+          'icon': '👤',
+          'actionType': 'open_user',
+          'actionId': user.uid,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

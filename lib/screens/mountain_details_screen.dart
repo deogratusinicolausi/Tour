@@ -2,27 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/wishlist_service.dart';
 import '../models/cart_model.dart';
 import '../services/cart_service.dart';
+import '../services/wishlist_service.dart';
 import '../utils/colors.dart';
-import 'booking_screen.dart';
 import '../models/review_model.dart';
 import '../services/review_service.dart';
 import '../widgets/review_card_widget.dart';
 import 'reviews_list_screen.dart';
+import 'booking_screen.dart';
 
+class MountainDetailsScreen extends StatefulWidget {
+  final Map<String, dynamic> mountain;
 
-class HotelDetailsScreen extends StatefulWidget {
-  final Map<String, dynamic> hotel;
-
-  const HotelDetailsScreen({super.key, required this.hotel});
+  const MountainDetailsScreen({super.key, required this.mountain});
 
   @override
-  State<HotelDetailsScreen> createState() => _HotelDetailsScreenState();
+  State<MountainDetailsScreen> createState() =>
+      _MountainDetailsScreenState();
 }
 
-class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
+class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
   final _wishlistService = WishlistService();
   final _firestore = FirebaseFirestore.instance;
   final User? _user = FirebaseAuth.instance.currentUser;
@@ -41,17 +41,18 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
       await _firestore.collection('activities').add({
         'type': 'view',
         'action': 'viewed',
-        'title': 'Viewed: ${widget.hotel['name']}',
-        'description': '${_user?.displayName ?? 'Guest'} viewed this hotel',
+        'title': 'Viewed: ${widget.mountain['name']}',
+        'description':
+        '${_user?.displayName ?? 'Guest'} viewed this mountain',
         'userId': _user?.uid ?? 'guest',
         'userName': _user?.displayName ?? 'Guest',
-        'itemId': widget.hotel['id'],
-        'itemType': 'hotel',
+        'itemId': widget.mountain['id'],
+        'itemType': 'mountain',
         'icon': '👁️',
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('🔥 Error: $e');
+      print('Error: $e');
     }
   }
 
@@ -59,7 +60,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     if (_user == null) return;
     final liked = await _wishlistService.isLiked(
       _user!.uid,
-      widget.hotel['id'],
+      widget.mountain['id'],
     );
     if (mounted) setState(() => _isLiked = liked);
   }
@@ -68,24 +69,25 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     if (_user == null) return;
     final wasAdded = await _wishlistService.addToWishlist(
       userId: _user!.uid,
-      itemId: widget.hotel['id'],
-      itemType: 'hotel',
-      itemName: widget.hotel['name'] ?? '',
-      itemImage: widget.hotel['imageUrl'] ?? '',
-      price: (widget.hotel['priceFrom'] ?? 0).toDouble(),
-      currency: widget.hotel['currency'] ?? 'USD',
+      itemId: widget.mountain['id'],
+      itemType: 'mountain',
+      itemName: widget.mountain['name'] ?? '',
+      itemImage: widget.mountain['imageUrl'] ?? '',
+      price: 0,
+      currency: 'USD',
     );
 
     if (wasAdded) {
       await _firestore.collection('activities').add({
         'type': 'wishlist',
         'action': 'liked',
-        'title': 'Liked: ${widget.hotel['name']}',
-        'description': '${_user!.displayName ?? 'User'} liked this hotel',
+        'title': 'Liked: ${widget.mountain['name']}',
+        'description':
+        '${_user!.displayName ?? 'User'} liked this mountain',
         'userId': _user!.uid,
         'userName': _user!.displayName ?? 'User',
-        'itemId': widget.hotel['id'],
-        'itemType': 'hotel',
+        'itemId': widget.mountain['id'],
+        'itemType': 'mountain',
         'icon': '❤️',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -95,20 +97,20 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
       setState(() => _isLiked = wasAdded);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(wasAdded ? '❤️ Added to wishlist' : '💔 Removed'),
+          content:
+          Text(wasAdded ? '❤️ Added to wishlist' : '💔 Removed'),
           backgroundColor: wasAdded ? Colors.red : Colors.grey,
         ),
       );
     }
   }
 
-  // ⭐️ Images zote kutoka admin
   List<String> get _allImages {
     final images = <String>[];
-    if ((widget.hotel['imageUrl'] ?? '').toString().isNotEmpty) {
-      images.add(widget.hotel['imageUrl']);
+    if ((widget.mountain['imageUrl'] ?? '').toString().isNotEmpty) {
+      images.add(widget.mountain['imageUrl']);
     }
-    final gallery = widget.hotel['gallery'] as List?;
+    final gallery = widget.mountain['gallery'] as List?;
     if (gallery != null) {
       for (var img in gallery) {
         if (img.toString().isNotEmpty) images.add(img.toString());
@@ -117,12 +119,30 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     return images;
   }
 
+  Color _getDifficultyColor(String difficulty) {
+    switch (difficulty) {
+      case 'Easy':
+        return Colors.green;
+      case 'Hard':
+        return Colors.orange;
+      case 'Extreme':
+        return Colors.red;
+      default:
+        return Colors.amber;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
     final images = _allImages;
-    final facilities = (widget.hotel['facilities'] as List?) ?? [];
+    final routes = (widget.mountain['routes'] as List?) ?? [];
+    final highlights = (widget.mountain['highlights'] as List?) ?? [];
+    final included = (widget.mountain['included'] as List?) ?? [];
+    final excluded = (widget.mountain['excluded'] as List?) ?? [];
+    final difficultyColor =
+    _getDifficultyColor(widget.mountain['difficulty'] ?? 'Moderate');
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -167,7 +187,26 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _buildMainImage(images, height, width),
+                  images.isEmpty
+                      ? Container(
+                    color: Colors.brown.shade200,
+                    child: const Icon(Icons.terrain,
+                        size: 80, color: Colors.white),
+                  )
+                      : PageView.builder(
+                    itemCount: images.length,
+                    onPageChanged: (i) =>
+                        setState(() => _currentImageIndex = i),
+                    itemBuilder: (context, i) => Image.network(
+                      images[i],
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey.shade300,
+                        child: const Icon(Icons.broken_image,
+                            size: 80, color: Colors.white),
+                      ),
+                    ),
+                  ),
                   Positioned.fill(
                     child: Container(
                       decoration: BoxDecoration(
@@ -219,7 +258,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          widget.hotel['name'] ?? '',
+                          widget.mountain['name'] ?? '',
                           style: TextStyle(
                             fontSize: width * 0.07,
                             fontWeight: FontWeight.bold,
@@ -227,7 +266,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                           ),
                         ),
                       ),
-                      if ((widget.hotel['rating'] ?? 0) > 0)
+                      if ((widget.mountain['rating'] ?? 0) > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
@@ -241,7 +280,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                                   color: AppColors.accentGold, size: 18),
                               const SizedBox(width: 4),
                               Text(
-                                (widget.hotel['rating'] as num)
+                                (widget.mountain['rating'] as num)
                                     .toStringAsFixed(1),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -253,18 +292,50 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                         ),
                     ],
                   ),
-                  SizedBox(height: height * 0.01),
+                  SizedBox(height: height * 0.015),
+
+                  // QUICK STATS
+                  Row(
+                    children: [
+                      _quickStat(
+                        Icons.height,
+                        '${(widget.mountain['height'] ?? 0).toStringAsFixed(0)}m',
+                        'Height',
+                        Colors.brown.shade700,
+                        width,
+                      ),
+                      SizedBox(width: width * 0.02),
+                      _quickStat(
+                        Icons.speed,
+                        widget.mountain['difficulty'] ?? 'Moderate',
+                        'Difficulty',
+                        difficultyColor,
+                        width,
+                      ),
+                      SizedBox(width: width * 0.02),
+                      _quickStat(
+                        Icons.access_time,
+                        widget.mountain['duration'] ?? 'N/A',
+                        'Duration',
+                        Colors.blue,
+                        width,
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: height * 0.02),
 
                   // LOCATION
-                  if ((widget.hotel['location'] ?? '').isNotEmpty)
+                  if ((widget.mountain['location'] ?? '').isNotEmpty)
                     Row(
                       children: [
                         Icon(Icons.location_on,
-                            color: AppColors.primary, size: width * 0.05),
+                            color: AppColors.primary,
+                            size: width * 0.05),
                         SizedBox(width: width * 0.02),
                         Expanded(
                           child: Text(
-                            widget.hotel['location'],
+                            '${widget.mountain['location']}, ${widget.mountain['country'] ?? ''}',
                             style: TextStyle(
                               fontSize: width * 0.038,
                               color: Colors.grey.shade600,
@@ -274,61 +345,80 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                       ],
                     ),
 
-                  SizedBox(height: height * 0.02),
+                  SizedBox(height: height * 0.025),
 
-                  // PRICE
-                  if ((widget.hotel['priceFrom'] ?? 0) > 0)
-                    Container(
-                      padding: EdgeInsets.all(width * 0.04),
-                      decoration: BoxDecoration(
-                        gradient: AppColors.mainGradient,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                  // FEATURED + BEST TIME
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      if (widget.mountain['featured'] == true)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentGold,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
+                              Icon(Icons.star,
+                                  size: 16, color: Colors.black),
+                              SizedBox(width: 5),
                               Text(
-                                'PRICE FROM',
+                                'FEATURED',
                                 style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: width * 0.026,
-                                  letterSpacing: 1,
-                                ),
-                              ),
-                              Text(
-                                '${widget.hotel['currency'] ?? 'USD'} ${(widget.hotel['priceFrom'] as num).toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: width * 0.07,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Text(
-                                'per night',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: width * 0.028,
+                                  color: Colors.black,
                                 ),
                               ),
                             ],
                           ),
-                          Icon(Icons.hotel,
-                              color: Colors.white, size: width * 0.12),
-                        ],
-                      ),
-                    ),
+                        ),
+                      if ((widget.mountain['bestTime'] ?? '')
+                          .toString()
+                          .isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: Colors.green.shade200),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.calendar_today,
+                                  size: 14,
+                                  color: Colors.green.shade700),
+                              const SizedBox(width: 5),
+                              Text(
+                                widget.mountain['bestTime'],
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
 
                   SizedBox(height: height * 0.025),
 
                   // DESCRIPTION
-                  if ((widget.hotel['description'] ?? '').isNotEmpty) ...[
+                  if ((widget.mountain['description'] ?? '')
+                      .toString()
+                      .isNotEmpty) ...[
                     _sectionTitle('About', width),
                     SizedBox(height: height * 0.01),
                     Text(
-                      widget.hotel['description'],
+                      widget.mountain['description'],
                       style: TextStyle(
                         fontSize: width * 0.037,
                         color: Colors.grey.shade700,
@@ -338,14 +428,14 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                     SizedBox(height: height * 0.025),
                   ],
 
-                  // FACILITIES
-                  if (facilities.isNotEmpty) ...[
-                    _sectionTitle('Facilities', width),
+                  // HIGHLIGHTS
+                  if (highlights.isNotEmpty) ...[
+                    _sectionTitle('✨ Highlights', width),
                     SizedBox(height: height * 0.01),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: facilities.map((f) {
+                      children: highlights.map((h) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
@@ -353,20 +443,137 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: AppColors.primary.withOpacity(0.3),
-                            ),
+                                color: AppColors.accentGold
+                                    .withOpacity(0.3)),
                           ),
-                          child: Text('✨ $f',
-                              style: const TextStyle(fontSize: 13)),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star,
+                                  color: AppColors.accentGold, size: 14),
+                              const SizedBox(width: 5),
+                              Text(h.toString(),
+                                  style: const TextStyle(fontSize: 13)),
+                            ],
+                          ),
                         );
                       }).toList(),
                     ),
                     SizedBox(height: height * 0.025),
                   ],
 
+                  // ROUTES
+                  if (routes.isNotEmpty) ...[
+                    _sectionTitle('🗺️ Routes', width),
+                    SizedBox(height: height * 0.01),
+                    ...routes.asMap().entries.map((e) {
+                      return Container(
+                        margin: EdgeInsets.only(bottom: height * 0.01),
+                        padding: EdgeInsets.all(width * 0.035),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color:
+                              AppColors.primary.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: width * 0.08,
+                              height: width * 0.08,
+                              decoration: const BoxDecoration(
+                                gradient: AppColors.mainGradient,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${e.key + 1}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: width * 0.03),
+                            Expanded(
+                              child: Text(
+                                e.value.toString(),
+                                style: TextStyle(
+                                  fontSize: width * 0.035,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    SizedBox(height: height * 0.025),
+                  ],
+
+                  // INCLUDED
+                  if (included.isNotEmpty) ...[
+                    _sectionTitle('✅ What\'s Included', width),
+                    SizedBox(height: height * 0.01),
+                    ...included.map((e) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(
+                            vertical: width * 0.01),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle,
+                                color: Colors.green, size: 20),
+                            SizedBox(width: width * 0.02),
+                            Expanded(
+                              child: Text(
+                                e.toString(),
+                                style: TextStyle(
+                                  fontSize: width * 0.035,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    SizedBox(height: height * 0.025),
+                  ],
+
+                  // EXCLUDED
+                  if (excluded.isNotEmpty) ...[
+                    _sectionTitle('❌ Not Included', width),
+                    SizedBox(height: height * 0.01),
+                    ...excluded.map((e) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(
+                            vertical: width * 0.01),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.cancel,
+                                color: Colors.red, size: 20),
+                            SizedBox(width: width * 0.02),
+                            Expanded(
+                              child: Text(
+                                e.toString(),
+                                style: TextStyle(
+                                  fontSize: width * 0.035,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    SizedBox(height: height * 0.025),
+                  ],
+
                   // GALLERY
                   if (images.length > 1) ...[
-                    _sectionTitle('Gallery', width),
+                    _sectionTitle('📸 Gallery', width),
                     SizedBox(height: height * 0.01),
                     SizedBox(
                       height: height * 0.1,
@@ -390,7 +597,8 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                                   errorBuilder: (_, __, ___) =>
                                       Container(
                                         color: Colors.grey.shade200,
-                                        child: const Icon(Icons.broken_image),
+                                        child: const Icon(
+                                            Icons.broken_image),
                                       ),
                                 ),
                               ),
@@ -402,72 +610,12 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                     SizedBox(height: height * 0.025),
                   ],
 
-                  // CONTACT
-                  if ((widget.hotel['contactPhone'] ?? '').isNotEmpty ||
-                      (widget.hotel['website'] ?? '').isNotEmpty) ...[
-                    _sectionTitle('Contact', width),
-                    SizedBox(height: height * 0.01),
-                    Row(
-                      children: [
-                        if ((widget.hotel['contactPhone'] ?? '')
-                            .isNotEmpty)
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                                final uri = Uri.parse(
-                                    'tel:${widget.hotel['contactPhone']}');
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri);
-                                }
-                              },
-                              icon: const Icon(Icons.phone, size: 18),
-                              label: const Text('Call'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.green,
-                                side:
-                                const BorderSide(color: Colors.green),
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                        if ((widget.hotel['contactPhone'] ?? '')
-                            .isNotEmpty &&
-                            (widget.hotel['website'] ?? '').isNotEmpty)
-                          SizedBox(width: width * 0.03),
-                        if ((widget.hotel['website'] ?? '').isNotEmpty)
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                                final uri =
-                                Uri.parse(widget.hotel['website']);
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri,
-                                      mode: LaunchMode.externalApplication);
-                                }
-                              },
-                              icon: const Icon(Icons.language, size: 18),
-                              label: const Text('Website'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primary,
-                                side: const BorderSide(
-                                    color: AppColors.primary),
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // REVIEWS SECTION
+                  // REVIEWS
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       FutureBuilder<Map<String, dynamic>>(
-                        future: ReviewService().getItemRatingStats(widget.hotel['id']),
+                        future: ReviewService().getItemRatingStats(widget.mountain['id']),
                         builder: (context, snapshot) {
                           final stats = snapshot.data ?? {};
                           final avg = (stats['average'] ?? 0.0).toStringAsFixed(1);
@@ -506,9 +654,9 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) => ReviewsListScreen(
-                                itemId: widget.hotel['id'],
-                                itemType: 'hotel',
-                                itemName: widget.hotel['name'] ?? '',
+                                itemId: widget.mountain['id'],
+                                itemType: 'mountain',
+                                itemName: widget.mountain['name'] ?? '',
                               ),
                             ),
                           );
@@ -519,23 +667,25 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                   ),
                   SizedBox(height: height * 0.01),
                   StreamBuilder<List<ReviewModel>>(
-                    stream: ReviewService().getItemReviews(widget.hotel['id']),
+                    stream: ReviewService().getItemReviews(widget.mountain['id']),
                     builder: (context, snapshot) {
                       final reviews = snapshot.data ?? [];
                       if (reviews.isEmpty) {
                         return Container(
-                          width: double.infinity,
                           padding: EdgeInsets.all(width * 0.05),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade50,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Column(
-                            children: [
-                              Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
-                              SizedBox(height: height * 0.01),
-                              Text('No reviews yet', style: TextStyle(color: Colors.grey.shade500)),
-                            ],
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
+                                SizedBox(height: height * 0.01),
+                                Text('No reviews yet',
+                                    style: TextStyle(color: Colors.grey.shade500)),
+                              ],
+                            ),
                           ),
                         );
                       }
@@ -553,6 +703,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                       );
                     },
                   ),
+                  SizedBox(height: height * 0.025),
 
                   SizedBox(height: height * 0.03),
 
@@ -596,14 +747,16 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                             return;
                           }
                           final cartService = CartService();
-                          final added = await cartService.addToCart(_user!.uid, CartItem(
-                            itemId: widget.hotel['id'],
-                            itemType: 'hotel',
-                            itemName: widget.hotel['name'] ?? '',
-                            itemImage: widget.hotel['imageUrl'] ?? '',
-                            price: (widget.hotel['priceFrom'] ?? 0).toDouble(),
-                            currency: widget.hotel['currency'] ?? 'USD',
-                          ));
+                          final added = await cartService.addToCart(
+                              _user!.uid,
+                              CartItem(
+                                itemId: widget.mountain['id'],
+                                itemType: 'mountain',
+                                itemName: widget.mountain['name'] ?? '',
+                                itemImage: widget.mountain['imageUrl'] ?? '',
+                                price: (widget.mountain['price'] ?? 0).toDouble(),
+                                currency: widget.mountain['currency'] ?? 'USD',
+                              ));
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -632,14 +785,13 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => BookingScreen(
-                                  itemType: 'hotel',
-                                  itemId: widget.hotel['id'],
-                                  itemName: widget.hotel['name'] ?? '',
-                                  itemImage: widget.hotel['imageUrl'] ?? '',
-                                  price: (widget.hotel['priceFrom'] ?? 0)
-                                      .toDouble(),
-                                  currency:
-                                  widget.hotel['currency'] ?? 'USD',
+                                  itemType: 'mountain',
+                                  itemId: widget.mountain['id'],
+                                  itemName: widget.mountain['name'] ?? '',
+                                  itemImage:
+                                  widget.mountain['imageUrl'] ?? '',
+                                  price: 0,
+                                  currency: 'USD',
                                 ),
                               ),
                             );
@@ -651,20 +803,14 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                               gradient: AppColors.mainGradient,
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
-
                                 BoxShadow(
-
-                                  color:
-                                  AppColors.primary.withOpacity(0.4),
+                                  color: AppColors.primary
+                                      .withOpacity(0.4),
                                   blurRadius: 15,
                                   offset: const Offset(0, 5),
                                 ),
-
                               ],
-
                             ),
-
-
                             child: const Center(
                               child: Text(
                                 'BOOK NOW',
@@ -692,39 +838,6 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     );
   }
 
-  Widget _buildMainImage(List<String> images, double height, double width) {
-    if (images.isEmpty) {
-      return Container(
-        color: AppColors.primary.withOpacity(0.1),
-        child: Center(
-          child: Icon(Icons.hotel_outlined,
-              size: width * 0.2, color: AppColors.primary),
-        ),
-      );
-    }
-
-    return PageView.builder(
-      itemCount: images.length,
-      onPageChanged: (i) => setState(() => _currentImageIndex = i),
-      itemBuilder: (context, i) => Image.network(
-        images[i],
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return Container(
-            color: Colors.grey.shade200,
-            child: const Center(child: CircularProgressIndicator()),
-          );
-        },
-        errorBuilder: (_, __, ___) => Container(
-          color: Colors.grey.shade200,
-          child: Icon(Icons.broken_image,
-              size: width * 0.2, color: Colors.grey.shade400),
-        ),
-      ),
-    );
-  }
-
   Widget _sectionTitle(String title, double width) {
     return Text(
       title,
@@ -732,6 +845,43 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
         fontSize: width * 0.05,
         fontWeight: FontWeight.bold,
         color: Colors.grey.shade900,
+      ),
+    );
+  }
+
+  Widget _quickStat(IconData icon, String value, String label, Color color,
+      double width) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.symmetric(
+            vertical: width * 0.03, horizontal: width * 0.02),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: width * 0.06),
+            SizedBox(height: width * 0.015),
+            Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: width * 0.032,
+                color: Colors.grey.shade800,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: width * 0.024,
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

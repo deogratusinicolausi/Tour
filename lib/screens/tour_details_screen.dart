@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../services/wishlist_service.dart';
 import '../models/cart_model.dart';
 import '../services/cart_service.dart';
+import '../services/wishlist_service.dart';
 import '../utils/colors.dart';
 import 'booking_screen.dart';
 import '../models/review_model.dart';
@@ -12,17 +11,16 @@ import '../services/review_service.dart';
 import '../widgets/review_card_widget.dart';
 import 'reviews_list_screen.dart';
 
+class TourDetailsScreen extends StatefulWidget {
+  final Map<String, dynamic> tour;
 
-class HotelDetailsScreen extends StatefulWidget {
-  final Map<String, dynamic> hotel;
-
-  const HotelDetailsScreen({super.key, required this.hotel});
+  const TourDetailsScreen({super.key, required this.tour});
 
   @override
-  State<HotelDetailsScreen> createState() => _HotelDetailsScreenState();
+  State<TourDetailsScreen> createState() => _TourDetailsScreenState();
 }
 
-class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
+class _TourDetailsScreenState extends State<TourDetailsScreen> {
   final _wishlistService = WishlistService();
   final _firestore = FirebaseFirestore.instance;
   final User? _user = FirebaseAuth.instance.currentUser;
@@ -41,17 +39,17 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
       await _firestore.collection('activities').add({
         'type': 'view',
         'action': 'viewed',
-        'title': 'Viewed: ${widget.hotel['name']}',
-        'description': '${_user?.displayName ?? 'Guest'} viewed this hotel',
+        'title': 'Viewed: ${widget.tour['name']}',
+        'description': '${_user?.displayName ?? 'Guest'} viewed this tour',
         'userId': _user?.uid ?? 'guest',
         'userName': _user?.displayName ?? 'Guest',
-        'itemId': widget.hotel['id'],
-        'itemType': 'hotel',
+        'itemId': widget.tour['id'],
+        'itemType': 'tour',
         'icon': '👁️',
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('🔥 Error: $e');
+      print('Error: $e');
     }
   }
 
@@ -59,7 +57,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     if (_user == null) return;
     final liked = await _wishlistService.isLiked(
       _user!.uid,
-      widget.hotel['id'],
+      widget.tour['id'],
     );
     if (mounted) setState(() => _isLiked = liked);
   }
@@ -68,24 +66,26 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     if (_user == null) return;
     final wasAdded = await _wishlistService.addToWishlist(
       userId: _user!.uid,
-      itemId: widget.hotel['id'],
-      itemType: 'hotel',
-      itemName: widget.hotel['name'] ?? '',
-      itemImage: widget.hotel['imageUrl'] ?? '',
-      price: (widget.hotel['priceFrom'] ?? 0).toDouble(),
-      currency: widget.hotel['currency'] ?? 'USD',
+      itemId: widget.tour['id'],
+      itemType: 'tour',
+      itemName: widget.tour['name'] ?? '',
+      itemImage: (widget.tour['images'] as List?)?.isNotEmpty == true
+          ? widget.tour['images'][0]
+          : '',
+      price: (widget.tour['price'] ?? 0).toDouble(),
+      currency: widget.tour['currency'] ?? 'USD',
     );
 
     if (wasAdded) {
       await _firestore.collection('activities').add({
         'type': 'wishlist',
         'action': 'liked',
-        'title': 'Liked: ${widget.hotel['name']}',
-        'description': '${_user!.displayName ?? 'User'} liked this hotel',
+        'title': 'Liked: ${widget.tour['name']}',
+        'description': '${_user!.displayName ?? 'User'} liked this tour',
         'userId': _user!.uid,
         'userName': _user!.displayName ?? 'User',
-        'itemId': widget.hotel['id'],
-        'itemType': 'hotel',
+        'itemId': widget.tour['id'],
+        'itemType': 'tour',
         'icon': '❤️',
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -102,19 +102,9 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     }
   }
 
-  // ⭐️ Images zote kutoka admin
   List<String> get _allImages {
-    final images = <String>[];
-    if ((widget.hotel['imageUrl'] ?? '').toString().isNotEmpty) {
-      images.add(widget.hotel['imageUrl']);
-    }
-    final gallery = widget.hotel['gallery'] as List?;
-    if (gallery != null) {
-      for (var img in gallery) {
-        if (img.toString().isNotEmpty) images.add(img.toString());
-      }
-    }
-    return images;
+    final images = (widget.tour['images'] as List?) ?? [];
+    return images.map((e) => e.toString()).toList();
   }
 
   @override
@@ -122,7 +112,9 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
     final images = _allImages;
-    final facilities = (widget.hotel['facilities'] as List?) ?? [];
+    final itinerary = (widget.tour['itinerary'] as List?) ?? [];
+    final included = (widget.tour['included'] as List?) ?? [];
+    final excluded = (widget.tour['excluded'] as List?) ?? [];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -167,7 +159,26 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _buildMainImage(images, height, width),
+                  images.isEmpty
+                      ? Container(
+                    color: Colors.grey.shade300,
+                    child: const Icon(Icons.tour,
+                        size: 80, color: Colors.white),
+                  )
+                      : PageView.builder(
+                    itemCount: images.length,
+                    onPageChanged: (i) =>
+                        setState(() => _currentImageIndex = i),
+                    itemBuilder: (context, i) => Image.network(
+                      images[i],
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey.shade300,
+                        child: const Icon(Icons.broken_image,
+                            size: 80, color: Colors.white),
+                      ),
+                    ),
+                  ),
                   Positioned.fill(
                     child: Container(
                       decoration: BoxDecoration(
@@ -214,12 +225,12 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // NAME + RATING
+                  // TITLE
                   Row(
                     children: [
                       Expanded(
                         child: Text(
-                          widget.hotel['name'] ?? '',
+                          widget.tour['name'] ?? '',
                           style: TextStyle(
                             fontSize: width * 0.07,
                             fontWeight: FontWeight.bold,
@@ -227,7 +238,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                           ),
                         ),
                       ),
-                      if ((widget.hotel['rating'] ?? 0) > 0)
+                      if ((widget.tour['rating'] ?? 0) > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
@@ -241,7 +252,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                                   color: AppColors.accentGold, size: 18),
                               const SizedBox(width: 4),
                               Text(
-                                (widget.hotel['rating'] as num)
+                                (widget.tour['rating'] as num)
                                     .toStringAsFixed(1),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -255,8 +266,47 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                   ),
                   SizedBox(height: height * 0.01),
 
+                  // TOUR TYPE + DURATION
+                  Row(
+                    children: [
+                      if ((widget.tour['tourType'] ?? '').isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            widget.tour['tourType'].toString().toUpperCase(),
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      if ((widget.tour['duration'] ?? '').isNotEmpty) ...[
+                        SizedBox(width: width * 0.02),
+                        Icon(Icons.access_time,
+                            size: width * 0.04,
+                            color: Colors.grey.shade600),
+                        SizedBox(width: width * 0.01),
+                        Text(
+                          widget.tour['duration'],
+                          style: TextStyle(
+                            fontSize: width * 0.032,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+
+                  SizedBox(height: height * 0.02),
+
                   // LOCATION
-                  if ((widget.hotel['location'] ?? '').isNotEmpty)
+                  if ((widget.tour['destinationName'] ?? '').isNotEmpty)
                     Row(
                       children: [
                         Icon(Icons.location_on,
@@ -264,7 +314,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                         SizedBox(width: width * 0.02),
                         Expanded(
                           child: Text(
-                            widget.hotel['location'],
+                            widget.tour['destinationName'],
                             style: TextStyle(
                               fontSize: width * 0.038,
                               color: Colors.grey.shade600,
@@ -274,10 +324,10 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                       ],
                     ),
 
-                  SizedBox(height: height * 0.02),
+                  SizedBox(height: height * 0.025),
 
                   // PRICE
-                  if ((widget.hotel['priceFrom'] ?? 0) > 0)
+                  if ((widget.tour['price'] ?? 0) > 0)
                     Container(
                       padding: EdgeInsets.all(width * 0.04),
                       decoration: BoxDecoration(
@@ -291,7 +341,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'PRICE FROM',
+                                'PRICE',
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: width * 0.026,
@@ -299,7 +349,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                                 ),
                               ),
                               Text(
-                                '${widget.hotel['currency'] ?? 'USD'} ${(widget.hotel['priceFrom'] as num).toStringAsFixed(0)}',
+                                '${widget.tour['currency'] ?? 'USD'} ${(widget.tour['price'] as num).toStringAsFixed(0)}',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: width * 0.07,
@@ -307,7 +357,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                                 ),
                               ),
                               Text(
-                                'per night',
+                                'per person',
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: width * 0.028,
@@ -315,7 +365,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                               ),
                             ],
                           ),
-                          Icon(Icons.hotel,
+                          Icon(Icons.tour,
                               color: Colors.white, size: width * 0.12),
                         ],
                       ),
@@ -324,11 +374,11 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                   SizedBox(height: height * 0.025),
 
                   // DESCRIPTION
-                  if ((widget.hotel['description'] ?? '').isNotEmpty) ...[
+                  if ((widget.tour['description'] ?? '').isNotEmpty) ...[
                     _sectionTitle('About', width),
                     SizedBox(height: height * 0.01),
                     Text(
-                      widget.hotel['description'],
+                      widget.tour['description'],
                       style: TextStyle(
                         fontSize: width * 0.037,
                         color: Colors.grey.shade700,
@@ -338,223 +388,111 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                     SizedBox(height: height * 0.025),
                   ],
 
-                  // FACILITIES
-                  if (facilities.isNotEmpty) ...[
-                    _sectionTitle('Facilities', width),
+                  // ITINERARY
+                  if (itinerary.isNotEmpty) ...[
+                    _sectionTitle('🗺️ Itinerary', width),
                     SizedBox(height: height * 0.01),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: facilities.map((f) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: AppColors.primary.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Text('✨ $f',
-                              style: const TextStyle(fontSize: 13)),
-                        );
-                      }).toList(),
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // GALLERY
-                  if (images.length > 1) ...[
-                    _sectionTitle('Gallery', width),
-                    SizedBox(height: height * 0.01),
-                    SizedBox(
-                      height: height * 0.1,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: images.length,
-                        itemBuilder: (context, i) {
-                          return GestureDetector(
-                            onTap: () => setState(
-                                    () => _currentImageIndex = i),
-                            child: Container(
-                              margin:
-                              EdgeInsets.only(right: width * 0.02),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.network(
-                                  images[i],
-                                  width: height * 0.1,
-                                  height: height * 0.1,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      Container(
-                                        color: Colors.grey.shade200,
-                                        child: const Icon(Icons.broken_image),
-                                      ),
+                    ...itinerary.asMap().entries.map((e) {
+                      return Container(
+                        margin: EdgeInsets.only(bottom: height * 0.01),
+                        padding: EdgeInsets.all(width * 0.035),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: AppColors.primary.withOpacity(0.2)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: width * 0.08,
+                              height: width * 0.08,
+                              decoration: const BoxDecoration(
+                                gradient: AppColors.mainGradient,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '${e.key + 1}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // CONTACT
-                  if ((widget.hotel['contactPhone'] ?? '').isNotEmpty ||
-                      (widget.hotel['website'] ?? '').isNotEmpty) ...[
-                    _sectionTitle('Contact', width),
-                    SizedBox(height: height * 0.01),
-                    Row(
-                      children: [
-                        if ((widget.hotel['contactPhone'] ?? '')
-                            .isNotEmpty)
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                                final uri = Uri.parse(
-                                    'tel:${widget.hotel['contactPhone']}');
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri);
-                                }
-                              },
-                              icon: const Icon(Icons.phone, size: 18),
-                              label: const Text('Call'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.green,
-                                side:
-                                const BorderSide(color: Colors.green),
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                        if ((widget.hotel['contactPhone'] ?? '')
-                            .isNotEmpty &&
-                            (widget.hotel['website'] ?? '').isNotEmpty)
-                          SizedBox(width: width * 0.03),
-                        if ((widget.hotel['website'] ?? '').isNotEmpty)
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                                final uri =
-                                Uri.parse(widget.hotel['website']);
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(uri,
-                                      mode: LaunchMode.externalApplication);
-                                }
-                              },
-                              icon: const Icon(Icons.language, size: 18),
-                              label: const Text('Website'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primary,
-                                side: const BorderSide(
-                                    color: AppColors.primary),
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // REVIEWS SECTION
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      FutureBuilder<Map<String, dynamic>>(
-                        future: ReviewService().getItemRatingStats(widget.hotel['id']),
-                        builder: (context, snapshot) {
-                          final stats = snapshot.data ?? {};
-                          final avg = (stats['average'] ?? 0.0).toStringAsFixed(1);
-                          final total = stats['total'] ?? 0;
-                          return Row(
-                            children: [
-                              _sectionTitle('⭐ Reviews', width),
-                              SizedBox(width: width * 0.02),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accentGold.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.star, color: AppColors.accentGold, size: 14),
-                                    SizedBox(width: width * 0.01),
-                                    Text(
-                                      '$avg ($total)',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
+                            SizedBox(width: width * 0.03),
+                            Expanded(
+                              child: Text(
+                                e.value.toString(),
+                                style: TextStyle(
+                                  fontSize: width * 0.035,
+                                  color: Colors.grey.shade800,
                                 ),
                               ),
-                            ],
-                          );
-                        },
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ReviewsListScreen(
-                                itemId: widget.hotel['id'],
-                                itemType: 'hotel',
-                                itemName: widget.hotel['name'] ?? '',
-                              ),
                             ),
-                          );
-                        },
-                        child: const Text('See All'),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: height * 0.01),
-                  StreamBuilder<List<ReviewModel>>(
-                    stream: ReviewService().getItemReviews(widget.hotel['id']),
-                    builder: (context, snapshot) {
-                      final reviews = snapshot.data ?? [];
-                      if (reviews.isEmpty) {
-                        return Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(width * 0.05),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
-                              SizedBox(height: height * 0.01),
-                              Text('No reviews yet', style: TextStyle(color: Colors.grey.shade500)),
-                            ],
-                          ),
-                        );
-                      }
-                      return Column(
-                        children: reviews.take(2).map((r) {
-                          return ReviewCard(
-                            review: r,
-                            currentUserId: _user?.uid,
-                            onHelpfulTap: () async {
-                              if (_user == null) return;
-                              await ReviewService().markHelpful(r.id, _user!.uid);
-                            },
-                          );
-                        }).toList(),
+                          ],
+                        ),
                       );
-                    },
-                  ),
+                    }),
+                    SizedBox(height: height * 0.025),
+                  ],
 
-                  SizedBox(height: height * 0.03),
+                  // INCLUDED
+                  if (included.isNotEmpty) ...[
+                    _sectionTitle('✅ What\'s Included', width),
+                    SizedBox(height: height * 0.01),
+                    ...included.map((e) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: width * 0.01),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.check_circle,
+                                color: Colors.green, size: 20),
+                            SizedBox(width: width * 0.02),
+                            Expanded(
+                              child: Text(
+                                e.toString(),
+                                style: TextStyle(
+                                  fontSize: width * 0.035,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    SizedBox(height: height * 0.025),
+                  ],
+
+                  // EXCLUDED
+                  if (excluded.isNotEmpty) ...[
+                    _sectionTitle('❌ Not Included', width),
+                    SizedBox(height: height * 0.01),
+                    ...excluded.map((e) {
+                      return Padding(
+                        padding: EdgeInsets.symmetric(vertical: width * 0.01),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.cancel,
+                                color: Colors.red, size: 20),
+                            SizedBox(width: width * 0.02),
+                            Expanded(
+                              child: Text(
+                                e.toString(),
+                                style: TextStyle(
+                                  fontSize: width * 0.035,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    SizedBox(height: height * 0.025),
+                  ],
 
                   // ACTION BUTTONS
                   Row(
@@ -597,12 +535,12 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                           }
                           final cartService = CartService();
                           final added = await cartService.addToCart(_user!.uid, CartItem(
-                            itemId: widget.hotel['id'],
-                            itemType: 'hotel',
-                            itemName: widget.hotel['name'] ?? '',
-                            itemImage: widget.hotel['imageUrl'] ?? '',
-                            price: (widget.hotel['priceFrom'] ?? 0).toDouble(),
-                            currency: widget.hotel['currency'] ?? 'USD',
+                            itemId: widget.tour['id'],
+                            itemType: 'tour',
+                            itemName: widget.tour['name'] ?? '',
+                            itemImage: images.isNotEmpty ? images[0] : '',
+                            price: (widget.tour['price'] ?? 0).toDouble(),
+                            currency: widget.tour['currency'] ?? 'USD',
                           ));
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -632,14 +570,14 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => BookingScreen(
-                                  itemType: 'hotel',
-                                  itemId: widget.hotel['id'],
-                                  itemName: widget.hotel['name'] ?? '',
-                                  itemImage: widget.hotel['imageUrl'] ?? '',
-                                  price: (widget.hotel['priceFrom'] ?? 0)
+                                  itemType: 'tour',
+                                  itemId: widget.tour['id'],
+                                  itemName: widget.tour['name'] ?? '',
+                                  itemImage:
+                                  images.isNotEmpty ? images[0] : '',
+                                  price: (widget.tour['price'] ?? 0)
                                       .toDouble(),
-                                  currency:
-                                  widget.hotel['currency'] ?? 'USD',
+                                  currency: widget.tour['currency'] ?? 'USD',
                                 ),
                               ),
                             );
@@ -651,20 +589,14 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                               gradient: AppColors.mainGradient,
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
-
                                 BoxShadow(
-
                                   color:
                                   AppColors.primary.withOpacity(0.4),
                                   blurRadius: 15,
                                   offset: const Offset(0, 5),
                                 ),
-
                               ],
-
                             ),
-
-
                             child: const Center(
                               child: Text(
                                 'BOOK NOW',
@@ -682,45 +614,108 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                     ],
                   ),
 
+                  SizedBox(height: height * 0.04),
+
+                  // REVIEWS Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      FutureBuilder<Map<String, dynamic>>(
+                        future: ReviewService().getItemRatingStats(widget.tour['id']),
+                        builder: (context, snapshot) {
+                          final stats = snapshot.data ?? {};
+                          final avg = (stats['average'] ?? 0.0).toStringAsFixed(1);
+                          final total = stats['total'] ?? 0;
+                          return Row(
+                            children: [
+                              _sectionTitle('⭐ Reviews', width),
+                              SizedBox(width: width * 0.02),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentGold.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.star, color: AppColors.accentGold, size: 14),
+                                    SizedBox(width: width * 0.01),
+                                    Text(
+                                      '$avg ($total)',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ReviewsListScreen(
+                                itemId: widget.tour['id'],
+                                itemType: 'tour',
+                                itemName: widget.tour['name'] ?? '',
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text('See All'),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: height * 0.01),
+                  StreamBuilder<List<ReviewModel>>(
+                    stream: ReviewService().getItemReviews(widget.tour['id']),
+                    builder: (context, snapshot) {
+                      final reviews = snapshot.data ?? [];
+                      if (reviews.isEmpty) {
+                        return Container(
+                          padding: EdgeInsets.all(width * 0.05),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
+                                SizedBox(height: height * 0.01),
+                                Text('No reviews yet',
+                                    style: TextStyle(color: Colors.grey.shade500)),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                      return Column(
+                        children: reviews.take(2).map((r) {
+                          return ReviewCard(
+                            review: r,
+                            currentUserId: _user?.uid,
+                            onHelpfulTap: () async {
+                              if (_user == null) return;
+                              await ReviewService().markHelpful(r.id, _user!.uid);
+                            },
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+
                   SizedBox(height: height * 0.05),
                 ],
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMainImage(List<String> images, double height, double width) {
-    if (images.isEmpty) {
-      return Container(
-        color: AppColors.primary.withOpacity(0.1),
-        child: Center(
-          child: Icon(Icons.hotel_outlined,
-              size: width * 0.2, color: AppColors.primary),
-        ),
-      );
-    }
-
-    return PageView.builder(
-      itemCount: images.length,
-      onPageChanged: (i) => setState(() => _currentImageIndex = i),
-      itemBuilder: (context, i) => Image.network(
-        images[i],
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return Container(
-            color: Colors.grey.shade200,
-            child: const Center(child: CircularProgressIndicator()),
-          );
-        },
-        errorBuilder: (_, __, ___) => Container(
-          color: Colors.grey.shade200,
-          child: Icon(Icons.broken_image,
-              size: width * 0.2, color: Colors.grey.shade400),
-        ),
       ),
     );
   }

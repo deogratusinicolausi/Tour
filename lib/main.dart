@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'utils/colors.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/main_screen.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +20,14 @@ void main() async {
       storageBucket: "turiva.firebasestorage.app",
     ),
   );
+
+  // Start listening for notifications
+  FirebaseAuth.instance.authStateChanges().listen((user) {
+    if (user != null) {
+      NotificationService().listenForNewNotifications(user.uid);
+    }
+  });
+
   runApp(const TurivaApp());
 }
 

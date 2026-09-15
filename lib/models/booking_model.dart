@@ -15,9 +15,11 @@ class BookingModel {
   final double amount;
   final String currency;
   final String paymentStatus;
+  final String paymentMethod;   // ⭐ ONGEZA HII
   final String bookingStatus;
   final String specialRequests;
   final DateTime? createdAt;
+  final DateTime? updatedAt;    // ⭐ ONGEZA HII (kama haipo)
 
   BookingModel({
     required this.id,
@@ -34,9 +36,10 @@ class BookingModel {
     required this.amount,
     this.currency = 'USD',
     this.paymentStatus = 'pending',
+    this.paymentMethod = 'cash',   // ⭐ ONGEZA
     this.bookingStatus = 'pending',
     this.specialRequests = '',
-    this.createdAt,
+    this.createdAt, this.updatedAt,
   });
 
   factory BookingModel.fromMap(Map<String, dynamic> map, String id) {
@@ -55,6 +58,7 @@ class BookingModel {
       amount: (map['amount'] ?? 0.0).toDouble(),
       currency: map['currency'] ?? 'USD',
       paymentStatus: map['paymentStatus'] ?? 'pending',
+      paymentMethod: map['paymentMethod'] ?? 'cash',   // ⭐ ONGEZA
       bookingStatus: map['bookingStatus'] ?? 'pending',
       specialRequests: map['specialRequests'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
@@ -77,6 +81,7 @@ class BookingModel {
       'amount': amount,
       'currency': currency,
       'paymentStatus': paymentStatus,
+      'paymentMethod': paymentMethod,   // ⭐ ONGEZA
       'bookingStatus': bookingStatus,
       'specialRequests': specialRequests,
       'createdAt': FieldValue.serverTimestamp(),
