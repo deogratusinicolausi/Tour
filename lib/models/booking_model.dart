@@ -20,6 +20,9 @@ class BookingModel {
   final String specialRequests;
   final DateTime? createdAt;
   final DateTime? updatedAt;    // ⭐ ONGEZA HII (kama haipo)
+  final String couponCode;
+  final double couponDiscount;
+  final double finalAmount;
 
   BookingModel({
     required this.id,
@@ -40,6 +43,9 @@ class BookingModel {
     this.bookingStatus = 'pending',
     this.specialRequests = '',
     this.createdAt, this.updatedAt,
+    this.couponCode = '',
+    this.couponDiscount = 0.0,
+    this.finalAmount = 0.0,
   });
 
   factory BookingModel.fromMap(Map<String, dynamic> map, String id) {
@@ -62,6 +68,10 @@ class BookingModel {
       bookingStatus: map['bookingStatus'] ?? 'pending',
       specialRequests: map['specialRequests'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate(),
+      couponCode: map['couponCode'] ?? '',
+      couponDiscount: (map['couponDiscount'] ?? 0.0).toDouble(),
+      finalAmount: (map['finalAmount'] ?? 0.0).toDouble(),
     );
   }
 
@@ -85,6 +95,10 @@ class BookingModel {
       'bookingStatus': bookingStatus,
       'specialRequests': specialRequests,
       'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'couponCode': couponCode,
+      'couponDiscount': couponDiscount,
+      'finalAmount': finalAmount,
     };
   }
 }

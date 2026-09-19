@@ -24,7 +24,7 @@ dependencies:
   cloudinary_public: ^0.23.1
   firebase_auth: ^6.6.1
   firebase_core_web: ^2.15.0
-  url_launcher: ^6.2.0
+  url_launcher: ^6.3.2
 
   # Other dependencies
   lottie: ^3.3.3
@@ -49,6 +49,10 @@ dependencies:
   image_picker: ^1.2.3
   firebase_storage: ^13.5.0
   cloudinary_made_easy: ^0.1.2
+  azampaytanzania: ^0.0.4
+  cloud_functions: ^6.5.0
+  google_maps_flutter: ^2.18.1
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

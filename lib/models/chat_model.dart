@@ -9,7 +9,7 @@ class ChatModel {
   final String adminName;
   final String adminPhoto;
   final String lastMessage;
-  final String lastMessageType; // text, image, file
+  final String lastMessageType;
   final DateTime? lastMessageAt;
   final int unreadByUser;
   final int unreadByAdmin;
@@ -18,7 +18,7 @@ class ChatModel {
   final String relatedItemId;
   final String relatedItemType;
   final String relatedItemName;
-  final String status; // active, closed, archived
+  final String status;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 

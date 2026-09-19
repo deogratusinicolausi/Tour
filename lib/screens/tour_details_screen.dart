@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/cart_model.dart';
@@ -10,6 +11,7 @@ import '../models/review_model.dart';
 import '../services/review_service.dart';
 import '../widgets/review_card_widget.dart';
 import 'reviews_list_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TourDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> tour;
@@ -107,6 +109,33 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
     return images.map((e) => e.toString()).toList();
   }
 
+  Future<void> _openInGoogleMaps() async {
+    final lat = widget.tour['latitude'];
+    final lng = widget.tour['longitude'];
+
+    if (lat == null || lng == null || lat == 0 || lng == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📍 Location coordinates not available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open maps')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -117,14 +146,31 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
     final excluded = (widget.tour['excluded'] as List?) ?? [];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          // IMAGE HEADER
-          SliverAppBar(
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // 2. Dark Overlay
+          Container(
+            color: Colors.black.withOpacity(0.55),
+          ),
+          // 3. Your Existing CustomScrollView
+          CustomScrollView(
+            slivers: [
+              // IMAGE HEADER
+              SliverAppBar(
             expandedHeight: height * 0.4,
             pinned: true,
-            backgroundColor: AppColors.primary,
+            backgroundColor: Colors.transparent, // CHANGED
             foregroundColor: Colors.white,
             leading: IconButton(
               icon: Container(
@@ -234,7 +280,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                           style: TextStyle(
                             fontSize: width * 0.07,
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade900,
+                            color: Colors.white, // CHANGED
                           ),
                         ),
                       ),
@@ -257,6 +303,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
+                                  color: Colors.white, // WHITE
                                 ),
                               ),
                             ],
@@ -274,13 +321,14 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
                           ),
                           child: Text(
                             widget.tour['tourType'].toString().toUpperCase(),
                             style: const TextStyle(
-                              color: AppColors.primary,
+                              color: Colors.white, // WHITE
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
@@ -290,13 +338,13 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                         SizedBox(width: width * 0.02),
                         Icon(Icons.access_time,
                             size: width * 0.04,
-                            color: Colors.grey.shade600),
+                            color: Colors.white70),
                         SizedBox(width: width * 0.01),
                         Text(
                           widget.tour['duration'],
                           style: TextStyle(
                             fontSize: width * 0.032,
-                            color: Colors.grey.shade600,
+                            color: Colors.white70,
                           ),
                         ),
                       ],
@@ -310,18 +358,46 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                     Row(
                       children: [
                         Icon(Icons.location_on,
-                            color: AppColors.primary, size: width * 0.05),
+                            color: Colors.white70, size: width * 0.05),
                         SizedBox(width: width * 0.02),
                         Expanded(
                           child: Text(
                             widget.tour['destinationName'],
                             style: TextStyle(
                               fontSize: width * 0.038,
-                              color: Colors.grey.shade600,
+                              color: Colors.white70,
                             ),
                           ),
                         ),
                       ],
+                    ),
+
+                  if ((widget.tour['destinationName'] ?? '').isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: height * 0.01),
+                      child: InkWell(
+                        onTap: _openInGoogleMaps,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.map_outlined,
+                                  color: Colors.white70, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Open in Google Maps',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: width * 0.032,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
 
                   SizedBox(height: height * 0.025),
@@ -331,8 +407,9 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                     Container(
                       padding: EdgeInsets.all(width * 0.04),
                       decoration: BoxDecoration(
-                        gradient: AppColors.mainGradient,
+                        color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.accentGold.withOpacity(0.5), width: 1.5),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -351,7 +428,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                               Text(
                                 '${widget.tour['currency'] ?? 'USD'} ${(widget.tour['price'] as num).toStringAsFixed(0)}',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.accentGold,
                                   fontSize: width * 0.07,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -366,7 +443,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                             ],
                           ),
                           Icon(Icons.tour,
-                              color: Colors.white, size: width * 0.12),
+                              color: AppColors.accentGold, size: width * 0.12),
                         ],
                       ),
                     ),
@@ -381,7 +458,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                       widget.tour['description'],
                       style: TextStyle(
                         fontSize: width * 0.037,
-                        color: Colors.grey.shade700,
+                        color: Colors.white70, // CHANGED
                         height: 1.6,
                       ),
                     ),
@@ -397,25 +474,24 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                         margin: EdgeInsets.only(bottom: height * 0.01),
                         padding: EdgeInsets.all(width * 0.035),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Colors.white.withOpacity(0.15), // GLASS
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: AppColors.primary.withOpacity(0.2)),
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
                         ),
                         child: Row(
                           children: [
                             Container(
                               width: width * 0.08,
                               height: width * 0.08,
-                              decoration: const BoxDecoration(
-                                gradient: AppColors.mainGradient,
+                              decoration: BoxDecoration(
+                                color: AppColors.accentGold, // GOLD
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Text(
                                   '${e.key + 1}',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: Colors.black, // BLACK on gold
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -427,7 +503,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                                 e.value.toString(),
                                 style: TextStyle(
                                   fontSize: width * 0.035,
-                                  color: Colors.grey.shade800,
+                                  color: Colors.white, // WHITE
                                 ),
                               ),
                             ),
@@ -455,7 +531,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                                 e.toString(),
                                 style: TextStyle(
                                   fontSize: width * 0.035,
-                                  color: Colors.grey.shade800,
+                                  color: Colors.white70, // WHITE70
                                 ),
                               ),
                             ),
@@ -483,7 +559,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                                 e.toString(),
                                 style: TextStyle(
                                   fontSize: width * 0.035,
-                                  color: Colors.grey.shade800,
+                                  color: Colors.white70, // WHITE70
                                 ),
                               ),
                             ),
@@ -497,72 +573,56 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                   // ACTION BUTTONS
                   Row(
                     children: [
+                      // LIKE BUTTON
                       GestureDetector(
                         onTap: _toggleLike,
                         child: Container(
                           padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
                             color: _isLiked
-                                ? Colors.red.withOpacity(0.1)
-                                : Colors.white,
+                                ? Colors.red.withOpacity(0.2)
+                                : Colors.white.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: _isLiked
                                   ? Colors.red
-                                  : Colors.grey.shade300,
-                              width: 2,
+                                  : Colors.white.withOpacity(0.3),
+                              width: 1.5,
                             ),
                           ),
                           child: Icon(
-                            _isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: _isLiked
-                                ? Colors.red
-                                : Colors.grey.shade600,
+                            _isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: _isLiked ? Colors.red : Colors.white,
                             size: width * 0.07,
                           ),
                         ),
                       ),
                       SizedBox(width: width * 0.03),
+                      // CART BUTTON
                       GestureDetector(
                         onTap: () async {
                           if (_user == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please login first')),
-                            );
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please login first')));
                             return;
                           }
                           final cartService = CartService();
-                          final added = await cartService.addToCart(_user!.uid, CartItem(
-                            itemId: widget.tour['id'],
-                            itemType: 'tour',
-                            itemName: widget.tour['name'] ?? '',
-                            itemImage: images.isNotEmpty ? images[0] : '',
-                            price: (widget.tour['price'] ?? 0).toDouble(),
-                            currency: widget.tour['currency'] ?? 'USD',
-                          ));
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(added ? '🛒 Added to cart!' : '❌ Failed'),
-                                backgroundColor: added ? Colors.green : Colors.red,
-                              ),
-                            );
-                          }
+                          /* ... KEEP YOUR LOGIC ... */
+                          final added = await cartService.addToCart(_user!.uid, CartItem(itemId: widget.tour['id'], itemType: 'tour', itemName: widget.tour['name'] ?? '', itemImage: images.isNotEmpty ? images[0] : '', price: (widget.tour['price'] ?? 0).toDouble(), currency: widget.tour['currency'] ?? 'USD'));
+                          if (mounted) { ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(added ? '🛒 Added to cart!' : '❌ Failed'), backgroundColor: added ? Colors.green : Colors.red)); }
                         },
                         child: Container(
                           padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey.shade300, width: 2),
+                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
                           ),
                           child: Icon(Icons.shopping_cart_outlined,
-                              color: AppColors.primary, size: width * 0.07),
+                              color: Colors.white, size: width * 0.07),
                         ),
                       ),
                       SizedBox(width: width * 0.03),
+                      // BOOK NOW BUTTON
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -573,25 +633,21 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                                   itemType: 'tour',
                                   itemId: widget.tour['id'],
                                   itemName: widget.tour['name'] ?? '',
-                                  itemImage:
-                                  images.isNotEmpty ? images[0] : '',
-                                  price: (widget.tour['price'] ?? 0)
-                                      .toDouble(),
+                                  itemImage: images.isNotEmpty ? images[0] : '',
+                                  price: (widget.tour['price'] ?? 0).toDouble(),
                                   currency: widget.tour['currency'] ?? 'USD',
                                 ),
                               ),
                             );
                           },
                           child: Container(
-                            padding: EdgeInsets.symmetric(
-                                vertical: height * 0.022),
+                            padding: EdgeInsets.symmetric(vertical: height * 0.022),
                             decoration: BoxDecoration(
-                              gradient: AppColors.mainGradient,
+                              color: AppColors.accentGold, // GOLD
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color:
-                                  AppColors.primary.withOpacity(0.4),
+                                  color: AppColors.accentGold.withOpacity(0.4),
                                   blurRadius: 15,
                                   offset: const Offset(0, 5),
                                 ),
@@ -601,7 +657,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                               child: Text(
                                 'BOOK NOW',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black, // BLACK on gold
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1,
@@ -680,16 +736,16 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
                         return Container(
                           padding: EdgeInsets.all(width * 0.05),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
+                            color: Colors.white.withOpacity(0.1), // GLASS
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
                           child: Center(
                             child: Column(
                               children: [
-                                Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
+                                Icon(Icons.rate_review, color: Colors.white70, size: 32),
                                 SizedBox(height: height * 0.01),
-                                Text('No reviews yet',
-                                    style: TextStyle(color: Colors.grey.shade500)),
+                                Text('No reviews yet', style: TextStyle(color: Colors.white70)),
                               ],
                             ),
                           ),
@@ -717,6 +773,8 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
           ),
         ],
       ),
+      ]
+      )
     );
   }
 
@@ -726,7 +784,7 @@ class _TourDetailsScreenState extends State<TourDetailsScreen> {
       style: TextStyle(
         fontSize: width * 0.05,
         fontWeight: FontWeight.bold,
-        color: Colors.grey.shade900,
+        color: Colors.white, // CHANGED
       ),
     );
   }

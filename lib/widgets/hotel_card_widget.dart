@@ -31,11 +31,12 @@ class HotelGridCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withOpacity(0.15), // GLASS
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withOpacity(0.3)), // White border
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withOpacity(0.15),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -132,8 +133,9 @@ class HotelGridCard extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Colors.white.withOpacity(0.2), // GLASS
                           shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.4)),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.1),
@@ -143,7 +145,7 @@ class HotelGridCard extends StatelessWidget {
                         ),
                         child: Icon(
                           isLiked ? Icons.favorite : Icons.favorite_border,
-                          color: isLiked ? Colors.red : Colors.grey.shade700,
+                          color: isLiked ? Colors.red : Colors.white, // WHITE when idle
                           size: 16,
                         ),
                       ),
@@ -161,9 +163,10 @@ class HotelGridCard extends StatelessWidget {
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: isSelectedForCompare
-                                ? AppColors.primary
-                                : Colors.white,
+                                ? AppColors.accentGold // Gold when selected
+                                : Colors.white.withOpacity(0.2), // GLASS
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white.withOpacity(0.4)),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.1),
@@ -176,8 +179,8 @@ class HotelGridCard extends StatelessWidget {
                                 ? Icons.check
                                 : Icons.compare_arrows,
                             color: isSelectedForCompare
-                                ? Colors.white
-                                : Colors.grey.shade700,
+                                ? Colors.black
+                                : Colors.white, // WHITE when idle
                             size: 14,
                           ),
                         ),
@@ -199,7 +202,7 @@ class HotelGridCard extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: width * 0.032,
-                        color: Colors.grey.shade900,
+                        color: Colors.white, // WHITE
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -209,7 +212,7 @@ class HotelGridCard extends StatelessWidget {
                       children: [
                         Icon(Icons.location_on,
                             size: width * 0.025,
-                            color: Colors.grey.shade500),
+                            color: Colors.white70), // CHANGED
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
@@ -218,7 +221,7 @@ class HotelGridCard extends StatelessWidget {
                                 '',
                             style: TextStyle(
                               fontSize: width * 0.022,
-                              color: Colors.grey.shade500,
+                              color: Colors.white70, // WHITE70
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -233,7 +236,7 @@ class HotelGridCard extends StatelessWidget {
                           Text(
                             '${hotel['currency'] ?? 'USD'} ${(hotel['priceFrom'] as num).toStringAsFixed(0)}',
                             style: TextStyle(
-                              color: AppColors.primary,
+                              color: AppColors.accentGold, // GOLD for price
                               fontWeight: FontWeight.bold,
                               fontSize: width * 0.032,
                             ),
@@ -241,7 +244,7 @@ class HotelGridCard extends StatelessWidget {
                           Text(
                             '/night',
                             style: TextStyle(
-                              color: Colors.grey.shade500,
+                              color: Colors.white70, // WHITE70
                               fontSize: width * 0.022,
                             ),
                           ),
@@ -320,11 +323,12 @@ class HotelListCard extends StatelessWidget {
       child: Container(
         margin: EdgeInsets.only(bottom: height * 0.015),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withOpacity(0.15), // GLASS
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withOpacity(0.1),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -379,7 +383,7 @@ class HotelListCard extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: width * 0.04,
-                        color: Colors.grey.shade900,
+                        color: Colors.white, // WHITE
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -389,7 +393,7 @@ class HotelListCard extends StatelessWidget {
                       children: [
                         Icon(Icons.location_on,
                             size: width * 0.03,
-                            color: Colors.grey.shade500),
+                            color: Colors.white70), // WHITE70
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
@@ -398,7 +402,7 @@ class HotelListCard extends StatelessWidget {
                                 '',
                             style: TextStyle(
                               fontSize: width * 0.028,
-                              color: Colors.grey.shade500,
+                              color: Colors.white70, // WHITE70
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -418,6 +422,7 @@ class HotelListCard extends StatelessWidget {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: width * 0.03,
+                              color: Colors.white, // WHITE
                             ),
                           ),
                         ],
@@ -428,7 +433,7 @@ class HotelListCard extends StatelessWidget {
                       Text(
                         '${hotel['currency'] ?? 'USD'} ${(hotel['priceFrom'] as num).toStringAsFixed(0)}/night',
                         style: TextStyle(
-                          color: AppColors.primary,
+                          color: AppColors.accentGold, // GOLD
                           fontWeight: FontWeight.bold,
                           fontSize: width * 0.035,
                         ),
@@ -446,7 +451,7 @@ class HotelListCard extends StatelessWidget {
                 onTap: onLike,
                 child: Icon(
                   isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: isLiked ? Colors.red : Colors.grey.shade400,
+                  color: isLiked ? Colors.red : Colors.white, // WHITE when idle
                   size: width * 0.06,
                 ),
               ),
@@ -485,15 +490,16 @@ class ShimmerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.1), // GLASS
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
       ),
       child: Column(
         children: [
           Container(
             height: 150,
             decoration: BoxDecoration(
-              color: Colors.grey.shade200,
+              color: Colors.white.withOpacity(0.1), // GLASS
               borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(18)),
             ),
@@ -506,13 +512,19 @@ class ShimmerCard extends StatelessWidget {
                 Container(
                   height: 14,
                   width: double.infinity,
-                  color: Colors.grey.shade200,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Container(
                   height: 10,
                   width: 100,
-                  color: Colors.grey.shade200,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ],
             ),
@@ -559,7 +571,7 @@ class _HoverCardState extends State<HoverCard> {
             boxShadow: _isHovered
                 ? [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
+                color: AppColors.accentGold.withOpacity(0.4), // GOLD glow
                 blurRadius: 25,
                 offset: const Offset(0, 10),
               ),

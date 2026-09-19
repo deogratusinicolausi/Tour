@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:local_auth/local_auth.dart';
 import '../services/auth_service.dart';
 import 'register_screen.dart';
-import 'home_screen.dart';
 import 'main_screen.dart';
 import '../utils/colors.dart';
 

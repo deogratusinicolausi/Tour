@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloudinary_made_easy/cloudinary_made_easy.dart';
 import 'dart:async';
-import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'national_parks_screen.dart';
 import '../utils/colors.dart';
 import 'chat_list_screen.dart';
+import 'my_bookings_screen.dart';
+import 'create_trip_screen.dart';
+import 'turiva_chat_list_screen.dart';
+import 'package:lottie/lottie.dart';
+import 'dart:ui';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -137,24 +141,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final width = size.width;
     final height = size.height;
 
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primaryDark,
-              AppColors.primary,
-              AppColors.primaryGreen,
-            ],
+     return Scaffold(
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
-        ),
-        child: SafeArea(
+          // 2. Dark Overlay
+          Container(
+            color: Colors.black.withOpacity(0.5),
+          ),
+          // 3. Main Content
+          SafeArea(
           child: _isLoading
               ? const Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.accentGold),
                   ),
                 )
               : SingleChildScrollView(
@@ -244,7 +254,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -255,16 +266,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: EdgeInsets.all(width * 0.05),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.2),
-            Colors.white.withOpacity(0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        border: Border.all(color: Colors.white.withOpacity(0.3)),
       ),
       child: Column(
         children: [
@@ -329,20 +333,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
 
           // 🆕 USER NAME & EMAIL
-          Text(
-            user?.displayName ?? 'Traveler',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: width * 0.055,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            user?.email ?? 'No email',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: width * 0.035,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Lottie Animation next to the name
+              SizedBox(
+                width: width * 0.12,
+                height: width * 0.12,
+                child: Lottie.asset(
+                  'assets/animations/profile_animation.json',
+                  repeat: true,
+                  animate: true,
+                ),
+              ),
+              SizedBox(width: width * 0.02),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    user?.displayName ?? 'Traveler',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: width * 0.055,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    user?.email ?? 'No email',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: width * 0.035,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
 
           SizedBox(height: height * 0.02),
@@ -395,8 +420,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Container(
           padding: EdgeInsets.all(width * 0.03),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.3)), // Add border
           ),
           child: Column(
             children: [
@@ -447,11 +473,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               margin: EdgeInsets.only(bottom: height * 0.01),
               padding: EdgeInsets.all(width * 0.04),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Colors.white.withOpacity(0.15), // GLASS
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.3)), // White border
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withOpacity(0.1),
                     blurRadius: 8,
                   ),
                 ],
@@ -476,18 +503,188 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: width * 0.038,
-                              color: Colors.grey.shade800,
+                              color: Colors.white,
                             )),
                         Text('Chat with TURIVA Support',
                             style: TextStyle(
                               fontSize: width * 0.028,
-                              color: Colors.grey.shade500,
+                              color: Colors.white70,
                             )),
                       ],
                     ),
                   ),
                   Icon(Icons.arrow_forward_ios,
-                      size: width * 0.035, color: Colors.grey.shade400),
+                      size: width * 0.035, color: Colors.white70),
+                ],
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TurivaChatListScreen()),
+              );
+            },
+            child: Container(
+              margin: EdgeInsets.only(bottom: height * 0.01),
+              padding: EdgeInsets.all(width * 0.04),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15), // GLASS
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.3)), // White border
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(width * 0.03),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.chat_bubble_outline,
+                        color: AppColors.primary, size: width * 0.05),
+                  ),
+                  SizedBox(width: width * 0.03),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('💬 Turiva Live Chat',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: width * 0.038,
+                              color: Colors.white,
+                            )),
+                        Text('Chat with support',
+                            style: TextStyle(
+                              fontSize: width * 0.028,
+                              color: Colors.white70,
+                            )),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios,
+                      size: width * 0.035, color: Colors.white70),
+                ],
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const MyBookingsScreen(),
+                ),
+              );
+            },
+            child: Container(
+              margin: EdgeInsets.only(bottom: height * 0.01),
+              padding: EdgeInsets.all(width * 0.04),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15), // GLASS
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.3)), // White border
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(width * 0.03),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.calendar_today,
+                        color: AppColors.primary, size: width * 0.05),
+                  ),
+                  SizedBox(width: width * 0.03),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('My Bookings',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: width * 0.038,
+                              color: Colors.white,
+                            )),
+                        Text('View all your bookings',
+                            style: TextStyle(
+                              fontSize: width * 0.028,
+                              color: Colors.white70,
+                            )),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios,
+                      size: width * 0.035, color: Colors.white70),
+                ],
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CreateTripScreen()),
+              );
+            },
+            child: Container(
+              margin: EdgeInsets.only(bottom: height * 0.01),
+              padding: EdgeInsets.all(width * 0.04),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15), // GLASS
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.3)), // White border
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(width * 0.03),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentGold.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.flight_takeoff,
+                        color: AppColors.accentGold, size: width * 0.05),
+                  ),
+                  SizedBox(width: width * 0.03),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('✈️ Create Multi-Destination Trip',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: width * 0.038,
+                              color: Colors.white,
+                            )),
+                        Text('Plan a complete trip',
+                            style: TextStyle(
+                              fontSize: width * 0.028,
+                              color: Colors.white70,
+                            )),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios,
+                      size: width * 0.035, color: Colors.white70),
                 ],
               ),
             ),
@@ -506,6 +703,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           TextField(
             controller: _nameController,
             style: const TextStyle(color: Colors.white),
+// For the Name Field
             decoration: InputDecoration(
               labelText: 'Full Name',
               labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
@@ -514,7 +712,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fillColor: Colors.white.withOpacity(0.1),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.3)), // Add white border
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.accentGold), // Gold when focused
               ),
             ),
           ),

@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lottie/lottie.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/notification_service.dart';
+import '../models/coupon_model.dart';
+import '../services/coupon_service.dart';
+import '../widgets/coupon_card_user.dart';
+import '../utils/colors.dart';
 import 'hotels_list_screen.dart';
 import 'profile_screen.dart';
-import '../utils/colors.dart';
 import 'explore_all_screen.dart';
 import 'destination_details_screen.dart';
 import 'tours_list_screen.dart';
@@ -14,10 +19,9 @@ import 'mountains_list_screen.dart';
 import 'culture_list_screen.dart';
 import 'food_list_screen.dart';
 import 'deals_list_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../services/notification_service.dart';
 import 'notifications_screen.dart';
-
+import 'coupons_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onProfileTap;
@@ -46,108 +50,56 @@ class _HomeScreenState extends State<HomeScreen> {
     final width = size.width;
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          Builder(builder: (context) {
-            final _notifService = NotificationService();
-            final _user = FirebaseAuth.instance.currentUser;
-
-            if (_user != null) {
-              return StreamBuilder<int>(
-                stream: _notifService.getUnreadCount(_user.uid),
-                builder: (context, snapshot) {
-                  final count = snapshot.data ?? 0;
-                  return Stack(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined,
-                            color: Colors.black),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const NotificationsScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      if (count > 0)
-                        Positioned(
-                          right: 8,
-                          top: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Text(
-                              count > 99 ? '99+' : '$count',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              );
-            }
-            return const SizedBox.shrink();
-          }),
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black),
-            onPressed: _logout,
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // 2. Dark Overlay
+          Container(
+            color: Colors.black.withOpacity(0.4),
+          ),
+          // 3. Content
+          SafeArea(
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: width * 0.04,
+                right: width * 0.04,
+                bottom: 120,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(width, height),
+                  SizedBox(
+                    height: 300,
+                    child: Lottie.asset(
+                      'assets/animations/diwali3.json',
+                      repeat: true,
+                      animate: true,
+                      alignment: Alignment.center,
+                    ),
+                  ),
+                  _buildSearchBar(width),
+                  _buildCategories(width, height),
+                  _buildFeaturedDestinations(width, height),
+                  _buildFeaturedCoupons(width, height),
+                  _buildSpecialOffers(width, height),
+                  _buildRecommendations(width, height),
+                ],
+              ),
+            ),
           ),
         ],
-      ),
-      body: SafeArea(
-        bottom: false,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: width * 0.04,
-            right: width * 0.04,
-            bottom: 120,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Header with welcome
-              _buildHeader(width, height),
-
-              // Lottie Animation between Header and Search Bar
-              SizedBox(
-                height: 300,
-                child: Lottie.asset(
-                  'assets/animations/diwali3.json',
-                  repeat: true,
-                  animate: true,
-                  alignment: Alignment.center
-                ),
-              ),
-
-              // 2. Search bar
-              _buildSearchBar(width),
-
-              // 3. Categories
-              _buildCategories(width, height),
-
-              // 4. Featured destinations
-              _buildFeaturedDestinations(width, height),
-
-              // 5. Special offers
-              _buildSpecialOffers(width, height),
-
-              // 6. Recommendations
-              _buildRecommendations(width, height),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -199,52 +151,139 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHeader(double width, double height) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: height * 0.02),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Hello, ${user?.displayName ?? 'Traveler'} 👋',
-                style: TextStyle(
-                  fontSize: width * 0.05,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hello, ${user?.displayName ?? 'Traveler'} 👋',
+                    style: TextStyle(
+                      fontSize: width * 0.04,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    'Where to today?',
+                    style: TextStyle(
+                      fontSize: width * 0.035,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                'Where to today?',
-                style: TextStyle(
-                  fontSize: width * 0.035,
-                  color: Colors.grey.shade600,
-                ),
+              Row(
+                children: [
+                  Builder(builder: (context) {
+                    final _notifService = NotificationService();
+                    final _user = FirebaseAuth.instance.currentUser;
+
+                    if (_user != null) {
+                      return StreamBuilder<int>(
+                        stream: _notifService.getUnreadCount(_user.uid),
+                        builder: (context, snapshot) {
+                          final count = snapshot.data ?? 0;
+                          return Stack(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.notifications_outlined,
+                                    color: Colors.white),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const NotificationsScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (count > 0)
+                                Positioned(
+                                  right: 8,
+                                  top: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Text(
+                                      count > 99 ? '99+' : '$count',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
+                  IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    onPressed: _logout,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      if (widget.onProfileTap != null) {
+                        widget.onProfileTap!();
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ProfileScreen(),
+                          ),
+                        );
+                      }
+                    },
+                    child: CircleAvatar(
+                      radius: width * 0.05,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      child: Text(
+                        user?.displayName?.substring(0, 1).toUpperCase() ?? '?',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: width * 0.04,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          GestureDetector(
-            onTap: () {
-              if (widget.onProfileTap != null) {
-                widget.onProfileTap!();
-              } else {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ProfileScreen(),
-                  ),
-                );
-              }
-            },
-            child: CircleAvatar(
-              radius: width * 0.06,
-              backgroundColor: AppColors.primary,
-              child: Text(
-                user?.displayName?.substring(0, 1).toUpperCase() ?? '?',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: width * 0.05,
-                ),
-              ),
+          SizedBox(height: height * 0.02),
+          // THE BIG TITLE
+          Text(
+            'Explore Tanzania',
+            style: TextStyle(
+              fontSize: width * 0.08,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          SizedBox(height: height * 0.01),
+          // The Subtitle Glass Pill
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: width * 0.04, vertical: height * 0.008),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: Text(
+              'Safaris • Coastal • Culture • Heritage',
+              style: TextStyle(color: Colors.white, fontSize: width * 0.03),
             ),
           ),
         ],
@@ -255,22 +294,38 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSearchBar(double width) {
     final height = MediaQuery.of(context).size.height;
     return Container(
-      margin: EdgeInsets.only(bottom: height * 0.02),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Search destinations, tours, hotels...',
-          hintStyle: TextStyle(color: Colors.grey.shade500),
-          prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: height * 0.015),
+      margin: EdgeInsets.only(bottom: height * 0.03, top: height * 0.02),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10.0, sigmaY: 10.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: TextField(
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Search destinations, hotels, experiences...',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                prefixIcon: const Icon(Icons.search, color: Colors.white),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: height * 0.02, horizontal: 20),
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SearchScreen()),
+                );
+              },
+            ),
+          ),
         ),
-        onTap: () {
-          // Navigate to search page
-        },
       ),
     );
   }
@@ -321,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: width * 0.045,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
+                color: Colors.white,
               ),
             ),
             TextButton(
@@ -331,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(builder: (_) => const ExploreAllScreen(categoryFilter: '',)),
                 );
               },
-              child: Text('See All', ),
+              child: const Text('See All', style: TextStyle(color: Colors.white70)),
             ),
           ],
         ),
@@ -401,7 +456,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: width * 0.045,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
+                color: Colors.white,
               ),
             ),
             // TextButton(
@@ -642,6 +697,71 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _buildFeaturedCoupons(double width, double height) {
+    final couponService = CouponService();
+
+    return StreamBuilder<List<CouponModel>>(
+      stream: couponService.getFeaturedCoupons(),
+      builder: (context, snapshot) {
+        final coupons = snapshot.data ?? [];
+        if (coupons.isEmpty) return const SizedBox();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '🎁 Coupons & Offers',
+                  style: TextStyle(
+                    fontSize: width * 0.045,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CouponsScreen(),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    'See All',
+                    style: TextStyle(color: AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: width * 0.02),
+            SizedBox(
+              height: height * 0.18,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: coupons.length,
+                itemBuilder: (context, i) {
+                  return Container(
+                    width: width * 0.85,
+                    margin: EdgeInsets.only(right: width * 0.03),
+                    child: CouponCardUser(
+                      coupon: coupons[i],
+                      showApplyButton: false,
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(height: width * 0.04),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildSpecialOffers(double width, double height) {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _firestoreService.getFeaturedDeals(),
@@ -660,7 +780,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: width * 0.045,
                 fontWeight: FontWeight.bold,
-                color: Colors.grey.shade800,
+                color: Colors.white,
               ),
             ),
             SizedBox(height: height * 0.015),
@@ -766,7 +886,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(
             fontSize: width * 0.045,
             fontWeight: FontWeight.bold,
-            color: Colors.grey.shade800,
+            color: Colors.white,
           ),
         ),
         SizedBox(height: height * 0.015),
@@ -897,29 +1017,19 @@ class _CategoryCardState extends State<_CategoryCard> {
           width: width * 0.22,
           margin: EdgeInsets.only(right: width * 0.03),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: widget.category['gradient'] as List<Color>,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(20),
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: (widget.category['gradient'] as List<Color>)[0]
-                          .withOpacity(0.5),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : [
-                    BoxShadow(
-                      color: (widget.category['gradient'] as List<Color>)[0]
-                          .withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

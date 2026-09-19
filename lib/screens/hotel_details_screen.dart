@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -52,6 +53,29 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
       });
     } catch (e) {
       print('🔥 Error: $e');
+    }
+  }
+
+  Future<void> _openInGoogleMaps() async {
+    final lat = widget.hotel['latitude'];
+    final lng = widget.hotel['longitude'];
+
+    if (lat == null || lng == null || lat == 0 || lng == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📍 Location not available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -125,16 +149,33 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     final facilities = (widget.hotel['facilities'] as List?) ?? [];
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          // IMAGE HEADER
-          SliverAppBar(
-            expandedHeight: height * 0.4,
-            pinned: true,
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            leading: IconButton(
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // 2. Dark Overlay
+          Container(
+            color: Colors.black.withOpacity(0.55),
+          ),
+          // 3. Your Existing CustomScrollView
+          CustomScrollView(
+            slivers: [
+              // IMAGE HEADER
+              SliverAppBar(
+                expandedHeight: height * 0.4,
+                pinned: true,
+                backgroundColor: Colors.transparent, // CHANGED
+                foregroundColor: Colors.white,
+                leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -223,7 +264,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                           style: TextStyle(
                             fontSize: width * 0.07,
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade900,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -266,13 +307,36 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                           child: Text(
                             widget.hotel['location'],
                             style: TextStyle(
-                              fontSize: width * 0.038,
-                              color: Colors.grey.shade600,
+                                fontSize: width * 0.038,
+                                color: Colors.white70,
                             ),
                           ),
                         ),
                       ],
                     ),
+
+                  SizedBox(height: height * 0.005),
+                  InkWell(
+                    onTap: _openInGoogleMaps,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        children: [
+                          Icon(Icons.map_outlined,
+                              color: AppColors.primary, size: width * 0.045),
+                          SizedBox(width: width * 0.02),
+                          Text(
+                            'Open in Google Maps',
+                            style: TextStyle(
+                              fontSize: width * 0.035,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
 
                   SizedBox(height: height * 0.02),
 
@@ -281,8 +345,9 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                     Container(
                       padding: EdgeInsets.all(width * 0.04),
                       decoration: BoxDecoration(
-                        gradient: AppColors.mainGradient,
+                        color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.accentGold.withOpacity(0.5), width: 1.5),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -301,7 +366,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                               Text(
                                 '${widget.hotel['currency'] ?? 'USD'} ${(widget.hotel['priceFrom'] as num).toStringAsFixed(0)}',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.accentGold,
                                   fontSize: width * 0.07,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -315,8 +380,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                               ),
                             ],
                           ),
-                          Icon(Icons.hotel,
-                              color: Colors.white, size: width * 0.12),
+                          Icon(Icons.hotel, color: AppColors.accentGold, size: width * 0.12),
                         ],
                       ),
                     ),
@@ -331,7 +395,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                       widget.hotel['description'],
                       style: TextStyle(
                         fontSize: width * 0.037,
-                        color: Colors.grey.shade700,
+                        color: Colors.white70,
                         height: 1.6,
                       ),
                     ),
@@ -350,14 +414,14 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: AppColors.primary.withOpacity(0.3),
+                              color: Colors.white.withOpacity(0.3),
                             ),
                           ),
                           child: Text('✨ $f',
-                              style: const TextStyle(fontSize: 13)),
+                              style: const TextStyle(fontSize: 13, color: Colors.white)),
                         );
                       }).toList(),
                     ),
@@ -423,9 +487,8 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                               icon: const Icon(Icons.phone, size: 18),
                               label: const Text('Call'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.green,
-                                side:
-                                const BorderSide(color: Colors.green),
+                                foregroundColor: Colors.white,
+                                side: BorderSide(color: Colors.white.withOpacity(0.5)),
                                 padding:
                                 const EdgeInsets.symmetric(vertical: 12),
                               ),
@@ -449,9 +512,8 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                               icon: const Icon(Icons.language, size: 18),
                               label: const Text('Website'),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.primary,
-                                side: const BorderSide(
-                                    color: AppColors.primary),
+                                foregroundColor: Colors.white,
+                                side: BorderSide(color: Colors.white.withOpacity(0.5)),
                                 padding:
                                 const EdgeInsets.symmetric(vertical: 12),
                               ),
@@ -527,14 +589,15 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                           width: double.infinity,
                           padding: EdgeInsets.all(width * 0.05),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
+                            color: Colors.white.withOpacity(0.1), // GLASS
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
                           child: Column(
                             children: [
-                              Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
+                              const Icon(Icons.rate_review, color: Colors.white70, size: 32),
                               SizedBox(height: height * 0.01),
-                              Text('No reviews yet', style: TextStyle(color: Colors.grey.shade500)),
+                              const Text('No reviews yet', style: TextStyle(color: Colors.white70)),
                             ],
                           ),
                         );
@@ -565,14 +628,14 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                           padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
                             color: _isLiked
-                                ? Colors.red.withOpacity(0.1)
-                                : Colors.white,
+                                ? Colors.red.withOpacity(0.2)
+                                : Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: _isLiked
                                   ? Colors.red
-                                  : Colors.grey.shade300,
-                              width: 2,
+                                  : Colors.white.withOpacity(0.3),
+                              width: 1.5,
                             ),
                           ),
                           child: Icon(
@@ -581,7 +644,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                                 : Icons.favorite_border,
                             color: _isLiked
                                 ? Colors.red
-                                : Colors.grey.shade600,
+                                : Colors.white, // WHITE when idle
                             size: width * 0.07,
                           ),
                         ),
@@ -616,12 +679,12 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                         child: Container(
                           padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey.shade300, width: 2),
+                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
                           ),
                           child: Icon(Icons.shopping_cart_outlined,
-                              color: AppColors.primary, size: width * 0.07),
+                              color: Colors.white, size: width * 0.07), // WHITE
                         ),
                       ),
                       SizedBox(width: width * 0.03),
@@ -648,28 +711,21 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                             padding: EdgeInsets.symmetric(
                                 vertical: height * 0.022),
                             decoration: BoxDecoration(
-                              gradient: AppColors.mainGradient,
+                              color: AppColors.accentGold, // GOLD button
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
-
                                 BoxShadow(
-
-                                  color:
-                                  AppColors.primary.withOpacity(0.4),
+                                  color: AppColors.accentGold.withOpacity(0.4),
                                   blurRadius: 15,
                                   offset: const Offset(0, 5),
                                 ),
-
                               ],
-
                             ),
-
-
                             child: const Center(
                               child: Text(
                                 'BOOK NOW',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black, // BLACK text on gold
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1,
@@ -687,6 +743,8 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
               ),
             ),
           ),
+        ],
+      ),
         ],
       ),
     );
@@ -731,7 +789,7 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
       style: TextStyle(
         fontSize: width * 0.05,
         fontWeight: FontWeight.bold,
-        color: Colors.grey.shade900,
+        color: Colors.white,
       ),
     );
   }

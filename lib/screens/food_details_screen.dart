@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -28,6 +29,29 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
   final User? _user = FirebaseAuth.instance.currentUser;
   bool _isLiked = false;
   int _currentImageIndex = 0;
+
+  Future<void> _openInGoogleMaps() async {
+    final lat = widget.food['latitude'];
+    final lng = widget.food['longitude'];
+
+    if (lat == null || lng == null || lat == 0 || lng == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📍 Location not available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   void initState() {
@@ -133,15 +157,32 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
     final spiceColor = getSpiceColor(widget.food['spiceLevel'] ?? 'Mild');
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: height * 0.4,
-            pinned: true,
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            leading: IconButton(
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // 2. Dark Overlay
+          Container(
+            color: Colors.black.withOpacity(0.55),
+          ),
+          // 3. Your Existing CustomScrollView
+          CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                expandedHeight: height * 0.4,
+                pinned: true,
+                backgroundColor: Colors.transparent, // CHANGED
+                foregroundColor: Colors.white,
+                leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
@@ -310,7 +351,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                     style: TextStyle(
                       fontSize: width * 0.07,
                       fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade900,
+                      color: Colors.white, // CHANGED
                     ),
                   ),
 
@@ -338,7 +379,7 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                     Row(
                       children: [
                         Icon(Icons.location_on,
-                            color: AppColors.primary,
+                            color: Colors.white70, // CHANGED
                             size: width * 0.05),
                         SizedBox(width: width * 0.02),
                         Expanded(
@@ -347,12 +388,34 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                                 '${widget.food['location']}, ${widget.food['region'] ?? ''}',
                             style: TextStyle(
                               fontSize: width * 0.038,
-                              color: Colors.grey.shade600,
+                              color: Colors.white70, // CHANGED
                             ),
                           ),
                         ),
                       ],
                     ),
+
+                  if (widget.food['latitude'] != null && widget.food['longitude'] != null) ...[
+                    SizedBox(height: height * 0.01),
+                    InkWell(
+                      onTap: _openInGoogleMaps,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.map_outlined,
+                              color: Colors.blue, size: 18),
+                          const SizedBox(width: 5),
+                          Text(
+                            'View on Maps',
+                            style: TextStyle(
+                              color: Colors.blue.shade700,
+                              fontWeight: FontWeight.w600,
+                              fontSize: width * 0.035,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
 
                   SizedBox(height: height * 0.02),
 
@@ -958,7 +1021,8 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
           ),
         ],
       ),
-    );
+
+        ]));
   }
 
   Widget _sectionTitle(String title, double width) {

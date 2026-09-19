@@ -3,7 +3,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/colors.dart';
 import '../services/image_service.dart';
-import 'category_screen.dart';
 import 'hotels_list_screen.dart';
 
 class ExploreAllScreen extends StatefulWidget {

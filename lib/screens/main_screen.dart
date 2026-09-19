@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'home_screen.dart';
 import 'my_wishlist_screen.dart';
 import 'profile_screen.dart';
 import '../utils/colors.dart';
 import 'trip_cart_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../services/notification_service.dart';
-import 'notifications_screen.dart';
+import 'search_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -21,7 +20,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const HomeScreen(),
-    const HomeScreen(), // Explore - baadaye
+    const SearchScreen(), // ⭐ Badilisha Map → Search
     const MyWishlistScreen(), // ⭐ Wishlist
     const TripCartScreen(), // ⭐ Cart
     const ProfileScreen(),
@@ -30,22 +29,45 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent, // Transparent so the background image shows
       extendBody: true,
-      body: _pages[_selectedIndex],
+      body: Stack(
+        children: [
+          // 1. The page content
+          _pages[_selectedIndex],
+
+          // 2. The blur layer behind the nav bar (Positioned at the bottom)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15.0, sigmaY: 15.0),
+                child: Container(
+                  height: 75, // Matches the new max height of nav bar
+                  color: Colors.transparent,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      // 3. The actual nav bar on top (no clipping wrapper here)
       bottomNavigationBar: CurvedNavigationBar(
         index: _selectedIndex,
-        height: 65.0,
+        height: 75.0, // Reduced to 75.0 to satisfy the package constraint (0 <= height <= 75.0)
         items: const <Widget>[
           HoverIcon(icon: Icons.home),
           HoverIcon(icon: Icons.search),
           HoverIcon(icon: Icons.favorite_border),
-          HoverIcon(icon: Icons.shopping_cart_outlined), // ⭐ Cart
+          HoverIcon(icon: Icons.shopping_cart_outlined),
           HoverIcon(icon: Icons.person),
         ],
-        color: Colors.white,
-        buttonBackgroundColor: const Color(0xFFF5A623),
-        backgroundColor: Colors.transparent,
+        color: Colors.white.withOpacity(0.15), // GLASS effect
+        buttonBackgroundColor: AppColors.accentGold, // Gold button (matches theme)
+        backgroundColor: Colors.transparent, // Transparent so the background shows through
         animationCurve: Curves.easeInOutCubic,
         animationDuration: const Duration(milliseconds: 600),
         onTap: (index) {
@@ -84,8 +106,16 @@ class _HoverIconState extends State<HoverIcon> {
         transformAlignment: Alignment.center,
         child: Icon(
           widget.icon,
-          size: 30,
-          color: _isHovered ? AppColors.accentGold : Colors.grey.shade700,
+          size: 28, // Slightly smaller so it fits the glass pill nicely
+          color: _isHovered ? AppColors.accentGold : Colors.white, // WHITE when idle, GOLD on hover
+          shadows: _isHovered
+              ? [
+                  Shadow(
+                    color: AppColors.accentGold.withOpacity(0.8),
+                    blurRadius: 15,
+                  ),
+                ]
+              : null,
         ),
       ),
     );

@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -176,259 +177,319 @@ class _BeachesListScreenState extends State<BeachesListScreen> {
     final height = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('🏖️ Beaches'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
-            onPressed: () => setState(() => _isGridView = !_isGridView),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // SEARCH + SORT
-          Container(
-            padding: EdgeInsets.all(width * 0.04),
-            color: AppColors.primary,
-            child: Column(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (v) => setState(() => _searchQuery = v),
-                    decoration: InputDecoration(
-                      hintText: 'Search beaches...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: InputBorder.none,
-                      contentPadding:
-                      EdgeInsets.symmetric(vertical: height * 0.015),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                          : null,
-                    ),
-                  ),
-                ),
-                SizedBox(height: height * 0.015),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _sortChip('recent', '🕐 Recent'),
-                      _sortChip('rating', '⭐ Top Rated'),
-                      _sortChip('name', '🔤 A-Z'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+   body: Stack(
+     children: [
+       // 1. Background Image
+       Container(
+         height: double.infinity,
+         width: double.infinity,
+         decoration: const BoxDecoration(
+           image: DecorationImage(
+             image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+             fit: BoxFit.cover,
+           ),
+         ),
+       ),
+       // 2. Dark Overlay
+       Container(
+         color: Colors.black.withOpacity(0.55),
+       ),
+       // 3. Main Content
+       SafeArea(
+         child: Column(
+           children: [
+             // --- CUSTOM TOP HEADER ---
+             Padding(
+               padding: EdgeInsets.symmetric(
+                 horizontal: width * 0.04,
+                 vertical: height * 0.01,
+               ),
+               child: Row(
+                 children: [
+                   IconButton(
+                     icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                     onPressed: () => Navigator.pop(context),
+                   ),
+                   Text(
+                     '🏖️ Beaches',
+                     style: TextStyle(
+                       fontSize: width * 0.055,
+                       fontWeight: FontWeight.bold,
+                       color: Colors.white,
+                     ),
+                   ),
+                   const Spacer(),
+                   IconButton(
+                     icon: Icon(
+                       _isGridView ? Icons.view_list : Icons.grid_view,
+                       color: Colors.white,
+                     ),
+                     onPressed: () => setState(() => _isGridView = !_isGridView),
+                   ),
+                 ],
+               ),
+             ),
 
-          // QUICK CHIPS
-          Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: width * 0.04, vertical: height * 0.01),
-            color: Colors.white,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _quickChip(
-                    '⭐ Featured',
-                    _showFeaturedOnly,
-                        () => setState(() {
-                      _showFeaturedOnly = !_showFeaturedOnly;
-                      if (_showFeaturedOnly) {
-                        _showLikesOnly = false;
-                        _showTrendingOnly = false;
-                      }
-                    }),
-                  ),
-                  _quickChip(
-                    '❤️ My Likes (${_likedBeaches.length})',
-                    _showLikesOnly,
-                        () {
-                      if (_user == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Please login'),
-                            backgroundColor: Colors.orange,
-                          ),
-                        );
-                        return;
-                      }
-                      setState(() {
-                        _showLikesOnly = !_showLikesOnly;
-                        if (_showLikesOnly) {
-                          _showFeaturedOnly = false;
-                          _showTrendingOnly = false;
-                        }
-                      });
-                    },
-                  ),
-                  _quickChip(
-                    '🔥 Trending',
-                    _showTrendingOnly,
-                        () => setState(() {
-                      _showTrendingOnly = !_showTrendingOnly;
-                      if (_showTrendingOnly) {
-                        _showFeaturedOnly = false;
-                        _showLikesOnly = false;
-                      }
-                    }),
-                  ),
-                ],
-              ),
-            ),
-          ),
+              // --- REST OF YOUR CONTENT ---
+             Expanded(
+               child: Column(
+                 children: [
+                   // SEARCH + SORT (Modified below)
+                   Container(
+                     padding: EdgeInsets.all(width * 0.04),
+                     child: Column(
+                       children: [
+                         // GLASS SEARCH BAR
+                         ClipRRect(
+                           borderRadius: BorderRadius.circular(12),
+                           child: BackdropFilter(
+                             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                             child: Container(
+                               decoration: BoxDecoration(
+                                 color: Colors.white.withOpacity(0.15),
+                                 borderRadius: BorderRadius.circular(12),
+                                 border: Border.all(
+                                     color: Colors.white.withOpacity(0.3)),
+                               ),
+                               child: TextField(
+                                 controller: _searchController,
+                                 style: const TextStyle(color: Colors.white),
+                                 onChanged: (v) =>
+                                     setState(() => _searchQuery = v),
+                                 decoration: InputDecoration(
+                                   hintText: 'Search beaches...',
+                                   hintStyle:
+                                       TextStyle(color: Colors.white.withOpacity(0.7)),
+                                   prefixIcon: const Icon(Icons.search,
+                                       color: Colors.white70),
+                                   border: InputBorder.none,
+                                   contentPadding: EdgeInsets.symmetric(
+                                       vertical: height * 0.015),
+                                   suffixIcon: _searchQuery.isNotEmpty
+                                       ? IconButton(
+                                     icon: const Icon(Icons.clear,
+                                         color: Colors.white70),
+                                     onPressed: () {
+                                       _searchController.clear();
+                                       setState(() => _searchQuery = '');
+                                     },
+                                   )
+                                       : null,
+                                 ),
+                               ),
+                             ),
+                           ),
+                         ),
+                         SizedBox(height: height * 0.015),
+                         SingleChildScrollView(
+                           scrollDirection: Axis.horizontal,
+                           child: Row(
+                             children: [
+                               _sortChip('recent', '🕐 Recent'),
+                               _sortChip('rating', '⭐ Top Rated'),
+                               _sortChip('name', '🔤 A-Z'),
+                             ],
+                           ),
+                         ),
+                       ],
+                     ),
+                   ),
 
-          // WATER TYPE FILTER
-          Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: width * 0.04, vertical: height * 0.01),
-            color: Colors.white,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: _waterTypes.map((type) {
-                  final isSelected = _filterWaterType == type;
-                  return GestureDetector(
-                    onTap: () => setState(() => _filterWaterType = type),
-                    child: Container(
-                      margin: EdgeInsets.only(right: width * 0.02),
-                      padding: EdgeInsets.symmetric(
-                          horizontal: width * 0.035,
-                          vertical: height * 0.006),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.primary
-                            : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        type,
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : Colors.grey.shade700,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          fontSize: width * 0.026,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
+                    // QUICK CHIPS (Modified below)
+                   Container(
+                     padding: EdgeInsets.symmetric(
+                         horizontal: width * 0.04, vertical: height * 0.01),
+                     child: SingleChildScrollView(
+                       scrollDirection: Axis.horizontal,
+                       child: Row(
+                         children: [
+                           _quickChip('⭐ Featured', _showFeaturedOnly, () {
+                             setState(() {
+                               _showFeaturedOnly = !_showFeaturedOnly;
+                               if (_showFeaturedOnly) {
+                                 _showLikesOnly = false;
+                                 _showTrendingOnly = false;
+                               }
+                             });
+                           }),
+                           _quickChip('❤️ My Likes (${_likedBeaches.length})', _showLikesOnly, () {
+                             if (_user == null) {
+                               ScaffoldMessenger.of(context).showSnackBar(
+                                 const SnackBar(
+                                   content: Text('Please login'),
+                                   backgroundColor: Colors.orange,
+                                 ),
+                               );
+                               return;
+                             }
+                             setState(() {
+                               _showLikesOnly = !_showLikesOnly;
+                               if (_showLikesOnly) {
+                                 _showFeaturedOnly = false;
+                                 _showTrendingOnly = false;
+                               }
+                             });
+                           }),
+                           _quickChip('🔥 Trending', _showTrendingOnly, () {
+                             setState(() {
+                               _showTrendingOnly = !_showTrendingOnly;
+                               if (_showTrendingOnly) {
+                                 _showFeaturedOnly = false;
+                                 _showLikesOnly = false;
+                               }
+                             });
+                           }),
+                         ],
+                       ),
+                     ),
+                   ),
 
-          // CONTENT
-          Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _service.getBeaches(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
+                    // WATER TYPE FILTER (Modified below)
+                   Container(
+                     padding: EdgeInsets.symmetric(
+                         horizontal: width * 0.04, vertical: height * 0.01),
+                     child: SingleChildScrollView(
+                       scrollDirection: Axis.horizontal,
+                       child: Row(
+                         children: _waterTypes.map((type) {
+                           final isSelected = _filterWaterType == type;
+                           return GestureDetector(
+                             onTap: () =>
+                                 setState(() => _filterWaterType = type),
+                             child: Container(
+                               margin: EdgeInsets.only(right: width * 0.02),
+                               padding: EdgeInsets.symmetric(
+                                   horizontal: width * 0.035,
+                                   vertical: height * 0.006),
+                               decoration: BoxDecoration(
+                                 color: isSelected
+                                     ? AppColors.accentGold
+                                     : Colors.white.withOpacity(0.15),
+                                 borderRadius: BorderRadius.circular(20),
+                                 border: Border.all(
+                                   color: isSelected
+                                       ? AppColors.accentGold
+                                       : Colors.white.withOpacity(0.3),
+                                 ),
+                               ),
+                               child: Text(
+                                 type,
+                                 style: TextStyle(
+                                   color: isSelected
+                                       ? Colors.black
+                                       : Colors.white,
+                                   fontWeight: isSelected
+                                       ? FontWeight.bold
+                                       : FontWeight.normal,
+                                   fontSize: width * 0.026,
+                                 ),
+                               ),
+                             ),
+                           );
+                         }).toList(),
+                       ),
+                     ),
+                   ),
 
-                final all = snapshot.data ?? [];
-                final beaches = _filterAndSort(all);
+                    // CONTENT (StreamBuilder)
+                   Expanded(
+                     child: StreamBuilder<List<Map<String, dynamic>>>(
+                       stream: _service.getBeaches(),
+                       builder: (context, snapshot) {
+                         if (snapshot.connectionState == ConnectionState.waiting) {
+                           return const Center(
+                               child: CircularProgressIndicator(color: Colors.white));
+                         }
+                         if (snapshot.hasError) {
+                           return Center(
+                               child: Text('Error: ${snapshot.error}',
+                                   style: const TextStyle(color: Colors.white)));
+                         }
 
-                if (beaches.isEmpty) return _buildEmptyState(width, height);
+                          final all = snapshot.data ?? [];
+                         final beaches = _filterAndSort(all);
 
-                return Column(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: width * 0.04,
-                          vertical: height * 0.01),
-                      child: Row(
-                        children: [
-                          Text(
-                            '${beaches.length} beach${beaches.length > 1 ? 'es' : ''}',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontWeight: FontWeight.w600,
-                              fontSize: width * 0.035,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: _isGridView
-                          ? GridView.builder(
-                        padding: EdgeInsets.all(width * 0.04),
-                        gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: width * 0.03,
-                          mainAxisSpacing: width * 0.03,
-                          childAspectRatio: 0.75,
-                        ),
-                        itemCount: beaches.length,
-                        itemBuilder: (context, i) => BeachGridCard(
-                          beach: beaches[i],
-                          isLiked:
-                          _likedBeaches.contains(beaches[i]['id']),
-                          onLike: () => _toggleLike(beaches[i]),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BeachDetailsScreen(
-                                    beach: beaches[i]),
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                          : ListView.builder(
-                        padding: EdgeInsets.all(width * 0.04),
-                        itemCount: beaches.length,
-                        itemBuilder: (context, i) => BeachListCard(
-                          beach: beaches[i],
-                          isLiked:
-                          _likedBeaches.contains(beaches[i]['id']),
-                          onLike: () => _toggleLike(beaches[i]),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BeachDetailsScreen(
-                                    beach: beaches[i]),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
+                          if (beaches.isEmpty) return _buildEmptyState(width, height);
+
+                          return Column(
+                           children: [
+                             Padding(
+                               padding: EdgeInsets.symmetric(
+                                   horizontal: width * 0.04,
+                                   vertical: height * 0.01),
+                               child: Row(
+                                 children: [
+                                   Text(
+                                     '${beaches.length} beach${beaches.length > 1 ? 'es' : ''}',
+                                     style: TextStyle(
+                                       color: Colors.white70, // WHITE70
+                                       fontWeight: FontWeight.w600,
+                                       fontSize: width * 0.035,
+                                     ),
+                                   ),
+                                 ],
+                               ),
+                             ),
+                             Expanded(
+                               child: _isGridView
+                                   ? GridView.builder(
+                                 padding: EdgeInsets.all(width * 0.04),
+                                 gridDelegate:
+                                 SliverGridDelegateWithFixedCrossAxisCount(
+                                   crossAxisCount: 2,
+                                   crossAxisSpacing: width * 0.03,
+                                   mainAxisSpacing: width * 0.03,
+                                   childAspectRatio: 0.75,
+                                 ),
+                                 itemCount: beaches.length,
+                                 itemBuilder: (context, i) => BeachGridCard(
+                                   beach: beaches[i],
+                                   isLiked: _likedBeaches.contains(beaches[i]['id']),
+                                   onLike: () => _toggleLike(beaches[i]),
+                                   onTap: () {
+                                     Navigator.push(
+                                       context,
+                                       MaterialPageRoute(
+                                         builder: (_) =>
+                                             BeachDetailsScreen(beach: beaches[i]),
+                                       ),
+                                     );
+                                   },
+                                 ),
+                               )
+                                   : ListView.builder(
+                                 padding: EdgeInsets.all(width * 0.04),
+                                 itemCount: beaches.length,
+                                 itemBuilder: (context, i) => BeachListCard(
+                                   beach: beaches[i],
+                                   isLiked: _likedBeaches.contains(beaches[i]['id']),
+                                   onLike: () => _toggleLike(beaches[i]),
+                                   onTap: () {
+                                     Navigator.push(
+                                       context,
+                                       MaterialPageRoute(
+                                         builder: (_) =>
+                                             BeachDetailsScreen(beach: beaches[i]),
+                                       ),
+                                     );
+                                   },
+                                 ),
+                               ),
+                             ),
+                           ],
+                         );
+                       },
+                     ),
+                   ),
+                 ],
+               ),
+             ),
+           ],
+         ),
+       ),
+     ],
+   ),
+ );
   }
 
   Widget _sortChip(String value, String label) {
@@ -444,8 +505,11 @@ class _BeachesListScreenState extends State<BeachesListScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.accentGold
-              : Colors.white.withOpacity(0.2),
+              : Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.accentGold : Colors.white.withOpacity(0.3),
+          ),
         ),
         child: Text(
           label,
@@ -470,17 +534,17 @@ class _BeachesListScreenState extends State<BeachesListScreen> {
         decoration: BoxDecoration(
           color: active
               ? AppColors.accentGold.withOpacity(0.2)
-              : Colors.grey.shade100,
+              : Colors.white.withOpacity(0.15), // GLASS
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: active ? AppColors.accentGold : Colors.grey.shade300,
+            color: active ? AppColors.accentGold : Colors.white.withOpacity(0.3),
             width: active ? 2 : 1,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: active ? AppColors.accentGold : Colors.grey.shade700,
+            color: active ? AppColors.accentGold : Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: width * 0.028,
           ),
@@ -491,41 +555,37 @@ class _BeachesListScreenState extends State<BeachesListScreen> {
 
   Widget _buildEmptyState(double width, double height) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(width * 0.1),
-            decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
-              shape: BoxShape.circle,
+      child: Container(
+        margin: EdgeInsets.all(width * 0.1),
+        padding: EdgeInsets.all(width * 0.08),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.beach_access, size: width * 0.15, color: Colors.white70),
+            SizedBox(height: height * 0.03),
+            Text(
+              _searchQuery.isEmpty ? 'No beaches available' : 'No results found',
+              style: TextStyle(
+                fontSize: width * 0.05,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
-            child: Icon(Icons.beach_access,
-                size: width * 0.15, color: Colors.blue),
-          ),
-          SizedBox(height: height * 0.03),
-          Text(
-            _searchQuery.isEmpty
-                ? 'No beaches available'
-                : 'No results found',
-            style: TextStyle(
-              fontSize: width * 0.05,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade700,
+            SizedBox(height: height * 0.01),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'Beaches will appear here once admin adds them'
+                  : 'Try different filters',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: width * 0.035, color: Colors.white70),
             ),
-          ),
-          SizedBox(height: height * 0.01),
-          Text(
-            _searchQuery.isEmpty
-                ? 'Beaches will appear here once admin adds them'
-                : 'Try different filters',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: width * 0.035,
-              color: Colors.grey.shade500,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

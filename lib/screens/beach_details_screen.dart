@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -118,11 +119,22 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
   }
 
   Future<void> _openMap() async {
-    final lat = widget.beach['latitude'] ?? 0;
-    final lng = widget.beach['longitude'] ?? 0;
-    if (lat == 0 && lng == 0) return;
+    final lat = widget.beach['latitude'];
+    final lng = widget.beach['longitude'];
+
+    if (lat == null || lng == null || lat == 0 || lng == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📍 Location not available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     final url = Uri.parse(
         'https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
@@ -135,16 +147,33 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
     final images = _allImages;
     final activities = (widget.beach['activities'] as List?) ?? [];
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          // IMAGE HEADER
-          SliverAppBar(
-            expandedHeight: height * 0.4,
-            pinned: true,
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
+     return Scaffold(
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // 2. Dark Overlay
+          Container(
+            color: Colors.black.withOpacity(0.55),
+          ),
+          // 3. Your Existing CustomScrollView
+          CustomScrollView(
+            slivers: [
+              // IMAGE HEADER
+              SliverAppBar(
+                expandedHeight: height * 0.4,
+                pinned: true,
+                backgroundColor: Colors.transparent, // CHANGED
+                foregroundColor: Colors.white,
             leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
@@ -253,7 +282,7 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                           style: TextStyle(
                             fontSize: width * 0.07,
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade900,
+                            color: Colors.white, // CHANGED
                           ),
                         ),
                       ),
@@ -276,6 +305,7 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
+                                  color: Colors.white, // WHITE
                                 ),
                               ),
                             ],
@@ -290,7 +320,7 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                     Row(
                       children: [
                         Icon(Icons.location_on,
-                            color: AppColors.primary,
+                            color: Colors.white70,
                             size: width * 0.05),
                         SizedBox(width: width * 0.02),
                         Expanded(
@@ -298,7 +328,7 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                             '${widget.beach['location']}, ${widget.beach['country'] ?? ''}',
                             style: TextStyle(
                               fontSize: width * 0.038,
-                              color: Colors.grey.shade600,
+                              color: Colors.white70,
                             ),
                           ),
                         ),
@@ -343,23 +373,21 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
+                            color: Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.blue.shade200),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.water,
-                                  size: 16, color: Colors.blue.shade700),
+                              Icon(Icons.water, size: 16, color: Colors.white70),
                               const SizedBox(width: 5),
                               Text(
                                 widget.beach['waterType'],
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade700,
+                                  color: Colors.white,
                                 ),
                               ),
                             ],
@@ -378,7 +406,7 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                       widget.beach['description'],
                       style: TextStyle(
                         fontSize: width * 0.037,
-                        color: Colors.grey.shade700,
+                        color: Colors.white70, // CHANGED
                         height: 1.6,
                       ),
                     ),
@@ -393,7 +421,17 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                           'Best Time',
                           widget.beach['bestTime'] ?? 'All Year',
                           Colors.blue,
-                          width),
+                          width,
+                      ),
+                      SizedBox(width: width * 0.03),
+                      _infoCard(
+                          Icons.map_outlined,
+                          'Map',
+                          'Open GPS',
+                          Colors.green,
+                          width,
+                          onTap: _openMap,
+                      ),
                     ],
                   ),
 
@@ -411,14 +449,13 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.blue.withOpacity(0.3)),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
                           ),
                           child: Text(
                             a.toString(),
-                            style: const TextStyle(fontSize: 13),
+                            style: const TextStyle(fontSize: 13, color: Colors.white),
                           ),
                         );
                       }).toList(),
@@ -475,33 +512,30 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                       child: Container(
                         padding: EdgeInsets.all(width * 0.05),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: Colors.white.withOpacity(0.15), // GLASS
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: Colors.blue.shade200),
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.map,
-                                color: Colors.blue.shade700,
-                                size: width * 0.08),
+                            Icon(Icons.map, color: Colors.white70, size: width * 0.08),
                             SizedBox(width: width * 0.03),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     'View on Map',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: width * 0.04,
+                                      color: Colors.white, // WHITE
                                     ),
                                   ),
                                   Text(
                                     'Tap to open in Google Maps',
                                     style: TextStyle(
-                                      color: Colors.grey.shade600,
+                                      color: Colors.white70, // WHITE70
                                       fontSize: width * 0.03,
                                     ),
                                   ),
@@ -510,7 +544,7 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                             ),
                             Icon(Icons.arrow_forward_ios,
                                 size: width * 0.035,
-                                color: Colors.grey.shade400),
+                                color: Colors.white70),
                           ],
                         ),
                       ),
@@ -583,16 +617,16 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                         return Container(
                           padding: EdgeInsets.all(width * 0.05),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
+                            color: Colors.white.withOpacity(0.1), // GLASS
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
                           child: Center(
                             child: Column(
                               children: [
-                                Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
+                                Icon(Icons.rate_review, color: Colors.white70, size: 32),
                                 SizedBox(height: height * 0.01),
-                                Text('No reviews yet',
-                                    style: TextStyle(color: Colors.grey.shade500)),
+                                Text('No reviews yet', style: TextStyle(color: Colors.white70)),
                               ],
                             ),
                           ),
@@ -619,34 +653,33 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                   // ACTION BUTTONS
                   Row(
                     children: [
+                      // LIKE BUTTON
                       GestureDetector(
                         onTap: _toggleLike,
                         child: Container(
                           padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
                             color: _isLiked
-                                ? Colors.red.withOpacity(0.1)
-                                : Colors.white,
+                                ? Colors.red.withOpacity(0.2)
+                                : Colors.white.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: _isLiked
                                   ? Colors.red
-                                  : Colors.grey.shade300,
-                              width: 2,
+                                  : Colors.white.withOpacity(0.3),
+                              width: 1.5,
                             ),
                           ),
                           child: Icon(
-                            _isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: _isLiked
-                                ? Colors.red
-                                : Colors.grey.shade600,
+                            _isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: _isLiked ? Colors.red : Colors.white,
                             size: width * 0.07,
                           ),
                         ),
                       ),
                       SizedBox(width: width * 0.03),
+
+                      // CART BUTTON
                       GestureDetector(
                         onTap: () async {
                           if (_user == null) {
@@ -678,15 +711,17 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                         child: Container(
                           padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey.shade300, width: 2),
+                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
                           ),
                           child: Icon(Icons.shopping_cart_outlined,
-                              color: AppColors.primary, size: width * 0.07),
+                              color: Colors.white, size: width * 0.07),
                         ),
                       ),
                       SizedBox(width: width * 0.03),
+
+                      // BOOK NOW BUTTON
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -706,15 +741,13 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                             );
                           },
                           child: Container(
-                            padding: EdgeInsets.symmetric(
-                                vertical: height * 0.022),
+                            padding: EdgeInsets.symmetric(vertical: height * 0.022),
                             decoration: BoxDecoration(
-                              gradient: AppColors.mainGradient,
+                              color: AppColors.accentGold, // GOLD
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primary
-                                      .withOpacity(0.4),
+                                  color: AppColors.accentGold.withOpacity(0.4),
                                   blurRadius: 15,
                                   offset: const Offset(0, 5),
                                 ),
@@ -724,7 +757,7 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
                               child: Text(
                                 'BOOK NOW',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                color: Colors.black, // BLACK on gold
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1,
@@ -744,6 +777,8 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
           ),
         ],
       ),
+       ]
+      ),
     );
   }
 
@@ -753,60 +788,64 @@ class _BeachDetailsScreenState extends State<BeachDetailsScreen> {
       style: TextStyle(
         fontSize: width * 0.05,
         fontWeight: FontWeight.bold,
-        color: Colors.grey.shade900,
+        color: Colors.white, // CHANGED
       ),
     );
   }
 
   Widget _infoCard(IconData icon, String label, String value, Color color,
-      double width) {
+      double width, {VoidCallback? onTap}) {
     return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(width * 0.04),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(width * 0.025),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(10),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.all(width * 0.04),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15), // GLASS
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
               ),
-              child: Icon(icon, color: color, size: width * 0.05),
-            ),
-            SizedBox(width: width * 0.02),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: width * 0.026,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: width * 0.032,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                ],
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(width * 0.025),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.3), // Slightly stronger for icon
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: Colors.white, size: width * 0.05),
               ),
-            ),
-          ],
+              SizedBox(width: width * 0.02),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: width * 0.026,
+                        color: Colors.white70, // WHITE70
+                      ),
+                    ),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: width * 0.032,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white, // WHITE
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

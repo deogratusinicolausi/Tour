@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CartItem {
   final String itemId;
-  final String itemType; // hotel, tour, beach, mountain, culture, food, activity
+  final String itemType;
   final String itemName;
   final String itemImage;
   final double price;

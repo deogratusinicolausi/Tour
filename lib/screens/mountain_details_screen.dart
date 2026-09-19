@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -102,6 +103,29 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
           backgroundColor: wasAdded ? Colors.red : Colors.grey,
         ),
       );
+    }
+  }
+
+  Future<void> _openInGoogleMaps() async {
+    final lat = widget.mountain['latitude'];
+    final lng = widget.mountain['longitude'];
+
+    if (lat == null || lng == null || lat == 0 || lng == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📍 Location not available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -345,6 +369,27 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                       ],
                     ),
 
+                  SizedBox(height: height * 0.015),
+
+                  // GOOGLE MAPS BUTTON
+                  InkWell(
+                    onTap: _openInGoogleMaps,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.map_outlined, color: Colors.white70, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'View on Google Maps',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: width * 0.035),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   SizedBox(height: height * 0.025),
 
                   // FEATURED + BEST TIME
@@ -383,24 +428,21 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.green.shade50,
+                            color: Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.green.shade200),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.calendar_today,
-                                  size: 14,
-                                  color: Colors.green.shade700),
+                              Icon(Icons.calendar_today, size: 14, color: Colors.white70),
                               const SizedBox(width: 5),
                               Text(
                                 widget.mountain['bestTime'],
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green.shade700,
+                                  color: Colors.white,
                                 ),
                               ),
                             ],
@@ -421,7 +463,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                       widget.mountain['description'],
                       style: TextStyle(
                         fontSize: width * 0.037,
-                        color: Colors.grey.shade700,
+                        color: Colors.white70, // CHANGED
                         height: 1.6,
                       ),
                     ),
@@ -440,11 +482,9 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: AppColors.accentGold
-                                    .withOpacity(0.3)),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -453,7 +493,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                                   color: AppColors.accentGold, size: 14),
                               const SizedBox(width: 5),
                               Text(h.toString(),
-                                  style: const TextStyle(fontSize: 13)),
+                                  style: const TextStyle(fontSize: 13, color: Colors.white)),
                             ],
                           ),
                         );
@@ -471,26 +511,24 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                         margin: EdgeInsets.only(bottom: height * 0.01),
                         padding: EdgeInsets.all(width * 0.035),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Colors.white.withOpacity(0.15), // GLASS
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color:
-                              AppColors.primary.withOpacity(0.2)),
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
                         ),
                         child: Row(
                           children: [
                             Container(
                               width: width * 0.08,
                               height: width * 0.08,
-                              decoration: const BoxDecoration(
-                                gradient: AppColors.mainGradient,
+                              decoration: BoxDecoration(
+                                color: AppColors.accentGold, // GOLD
                                 shape: BoxShape.circle,
                               ),
                               child: Center(
                                 child: Text(
                                   '${e.key + 1}',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: Colors.black, // BLACK on gold
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -502,7 +540,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                                 e.value.toString(),
                                 style: TextStyle(
                                   fontSize: width * 0.035,
-                                  color: Colors.grey.shade800,
+                                  color: Colors.white, // WHITE
                                 ),
                               ),
                             ),
@@ -531,7 +569,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                                 e.toString(),
                                 style: TextStyle(
                                   fontSize: width * 0.035,
-                                  color: Colors.grey.shade800,
+                                  color: Colors.white70, // WHITE70
                                 ),
                               ),
                             ),
@@ -560,7 +598,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                                 e.toString(),
                                 style: TextStyle(
                                   fontSize: width * 0.035,
-                                  color: Colors.grey.shade800,
+                                  color: Colors.white70, // WHITE70
                                 ),
                               ),
                             ),
@@ -674,16 +712,16 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                         return Container(
                           padding: EdgeInsets.all(width * 0.05),
                           decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
+                            color: Colors.white.withOpacity(0.1), // GLASS
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.2)),
                           ),
                           child: Center(
                             child: Column(
                               children: [
-                                Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
+                                Icon(Icons.rate_review, color: Colors.white70, size: 32),
                                 SizedBox(height: height * 0.01),
-                                Text('No reviews yet',
-                                    style: TextStyle(color: Colors.grey.shade500)),
+                                Text('No reviews yet', style: TextStyle(color: Colors.white70)),
                               ],
                             ),
                           ),
@@ -710,58 +748,61 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                   // ACTION BUTTONS
                   Row(
                     children: [
+                      // LIKE BUTTON
                       GestureDetector(
                         onTap: _toggleLike,
                         child: Container(
                           padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
                             color: _isLiked
-                                ? Colors.red.withOpacity(0.1)
-                                : Colors.white,
+                                ? Colors.red.withOpacity(0.2)
+                                : Colors.white.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
                               color: _isLiked
                                   ? Colors.red
-                                  : Colors.grey.shade300,
-                              width: 2,
+                                  : Colors.white.withOpacity(0.3),
+                              width: 1.5,
                             ),
                           ),
                           child: Icon(
-                            _isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: _isLiked
-                                ? Colors.red
-                                : Colors.grey.shade600,
+                            _isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: _isLiked ? Colors.red : Colors.white,
                             size: width * 0.07,
                           ),
                         ),
                       ),
                       SizedBox(width: width * 0.03),
+
+                      // CART BUTTON
                       GestureDetector(
                         onTap: () async {
                           if (_user == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please login first')),
+                              const SnackBar(
+                                  content: Text('Please login first')),
                             );
                             return;
                           }
                           final cartService = CartService();
                           final added = await cartService.addToCart(
-                              _user!.uid,
-                              CartItem(
-                                itemId: widget.mountain['id'],
-                                itemType: 'mountain',
-                                itemName: widget.mountain['name'] ?? '',
-                                itemImage: widget.mountain['imageUrl'] ?? '',
-                                price: (widget.mountain['price'] ?? 0).toDouble(),
-                                currency: widget.mountain['currency'] ?? 'USD',
-                              ));
+                            _user!.uid,
+                            CartItem(
+                              itemId: widget.mountain['id'],
+                              itemType: 'mountain',
+                              itemName: widget.mountain['name'] ?? '',
+                              itemImage: widget.mountain['imageUrl'] ?? '',
+                              price: (widget.mountain['price'] ?? 0).toDouble(),
+                              currency: widget.mountain['currency'] ?? 'USD',
+                            ),
+                          );
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text(added ? '🛒 Added to cart!' : '❌ Failed'),
-                                backgroundColor: added ? Colors.green : Colors.red,
+                                content: Text(
+                                    added ? '🛒 Added to cart!' : '❌ Failed'),
+                                backgroundColor:
+                                    added ? Colors.green : Colors.red,
                               ),
                             );
                           }
@@ -769,15 +810,19 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                         child: Container(
                           padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.15), // GLASS
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey.shade300, width: 2),
+                            border: Border.all(
+                                color: Colors.white.withOpacity(0.3),
+                                width: 1.5),
                           ),
                           child: Icon(Icons.shopping_cart_outlined,
-                              color: AppColors.primary, size: width * 0.07),
+                              color: Colors.white, size: width * 0.07),
                         ),
                       ),
                       SizedBox(width: width * 0.03),
+
+                      // BOOK NOW BUTTON
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
@@ -788,8 +833,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                                   itemType: 'mountain',
                                   itemId: widget.mountain['id'],
                                   itemName: widget.mountain['name'] ?? '',
-                                  itemImage:
-                                  widget.mountain['imageUrl'] ?? '',
+                                  itemImage: widget.mountain['imageUrl'] ?? '',
                                   price: 0,
                                   currency: 'USD',
                                 ),
@@ -800,12 +844,11 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                             padding: EdgeInsets.symmetric(
                                 vertical: height * 0.022),
                             decoration: BoxDecoration(
-                              gradient: AppColors.mainGradient,
+                              color: AppColors.accentGold, // GOLD
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primary
-                                      .withOpacity(0.4),
+                                  color: AppColors.accentGold.withOpacity(0.4),
                                   blurRadius: 15,
                                   offset: const Offset(0, 5),
                                 ),
@@ -815,7 +858,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                               child: Text(
                                 'BOOK NOW',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.black, // BLACK on gold
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                   letterSpacing: 1,
@@ -844,7 +887,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
       style: TextStyle(
         fontSize: width * 0.05,
         fontWeight: FontWeight.bold,
-        color: Colors.grey.shade900,
+        color: Colors.white, // CHANGED
       ),
     );
   }
@@ -856,8 +899,9 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
         padding: EdgeInsets.symmetric(
             vertical: width * 0.03, horizontal: width * 0.02),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: Colors.white.withOpacity(0.15), // GLASS
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
         ),
         child: Column(
           children: [
@@ -868,7 +912,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: width * 0.032,
-                color: Colors.grey.shade800,
+                color: Colors.white, // WHITE
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -877,7 +921,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
               label,
               style: TextStyle(
                 fontSize: width * 0.024,
-                color: Colors.grey.shade600,
+                color: Colors.white70, // WHITE70
               ),
             ),
           ],

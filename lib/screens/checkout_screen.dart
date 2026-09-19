@@ -6,6 +6,9 @@ import '../models/cart_model.dart';
 import '../services/cart_service.dart';
 import '../utils/colors.dart';
 import 'itinerary_screen.dart';
+import '../models/coupon_model.dart';
+import '../services/coupon_service.dart';
+import '../widgets/coupon_input_widget.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final TripCartModel cart;
@@ -30,6 +33,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   DateTime? _startDate;
   String _paymentMethod = 'Cash on Arrival';
   bool _isLoading = false;
+
+  CouponModel? _appliedCoupon;
+  double _discount = 0;
+  double get _finalAmount => widget.cart.totalAmount - _discount;
 
   final List<String> _paymentMethods = [
     'Cash on Arrival',
@@ -113,6 +120,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           'updatedAt': FieldValue.serverTimestamp(),
         });
         bookingIds.add(bookingRef.id);
+
+        // Apply coupon
+        if (_appliedCoupon != null) {
+          final couponService = CouponService();
+          await couponService.applyCoupon(
+            couponId: _appliedCoupon!.id,
+            userId: _user!.uid,
+          );
+        }
+
+        // Update booking with coupon details
+        if (_appliedCoupon != null) {
+          await _firestore.collection('bookings').doc(bookingRef.id).update({
+            'couponCode': _appliedCoupon!.code,
+            'couponDiscount': _discount,
+            'finalAmount': _finalAmount,
+          });
+        }
       }
 
       // Create order record
@@ -123,7 +148,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'userPhone': _phoneController.text.trim(),
         'bookingIds': bookingIds,
         'items': widget.cart.items.map((e) => e.toMap()).toList(),
-        'totalAmount': widget.cart.totalAmount,
+        'totalAmount': _finalAmount,
+        'discount': _discount,
+        'couponCode': _appliedCoupon?.code,
         'currency': widget.cart.currency,
         'travelDate': Timestamp.fromDate(_startDate!),
         'paymentMethod': _paymentMethod,
@@ -140,7 +167,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'title':
         'New Order: ${widget.cart.itemCount} items',
         'description':
-        '${_nameController.text} placed an order for ${widget.cart.currency} ${widget.cart.totalAmount.toStringAsFixed(0)}',
+        '${_nameController.text} placed an order for ${widget.cart.currency} ${_finalAmount.toStringAsFixed(0)}',
         'userId': _user!.uid,
         'userName': _nameController.text,
         'itemId': orderRef.id,
@@ -360,6 +387,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
               SizedBox(height: height * 0.03),
 
+              // ⭐️ COUPON INPUT
+              _stepHeader('5', '🎁 Coupon Code', width),
+              SizedBox(height: height * 0.015),
+              CouponInputWidget(
+                amount: widget.cart.totalAmount,
+                itemType: 'all', // au specific item type
+                onCouponApplied: (coupon, discount) {
+                  setState(() {
+                    _appliedCoupon = coupon;
+                    _discount = discount;
+                  });
+                },
+              ),
+              SizedBox(height: height * 0.03),
+
               // Order Summary
               Container(
                 padding: EdgeInsets.all(width * 0.05),
@@ -389,6 +431,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ],
                     ),
                     SizedBox(height: height * 0.01),
+                    if (_discount > 0) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Discount',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: width * 0.035,
+                            ),
+                          ),
+                          Text(
+                            '- ${widget.cart.currency} ${_discount.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: height * 0.01),
+                    ],
                     Container(
                       height: 1,
                       color: Colors.white.withOpacity(0.2),
@@ -406,13 +470,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             letterSpacing: 1,
                           ),
                         ),
-                        Text(
-                          '${widget.cart.currency} ${widget.cart.totalAmount.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: width * 0.065,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            if (_discount > 0) ...[
+                              Text(
+                                '${widget.cart.currency} ${widget.cart.totalAmount.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: width * 0.035,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                              Text(
+                                '-${widget.cart.currency} ${_discount.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  color: Colors.green.shade300,
+                                  fontSize: width * 0.035,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                            Text(
+                              '${widget.cart.currency} ${_finalAmount.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: width * 0.065,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

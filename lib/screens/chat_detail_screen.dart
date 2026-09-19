@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -160,207 +161,239 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: width * 0.045,
-              backgroundColor: Colors.white,
-              backgroundImage: widget.otherUserPhoto.isNotEmpty
-                  ? NetworkImage(widget.otherUserPhoto)
-                  : null,
-              child: widget.otherUserPhoto.isEmpty
-                  ? Icon(
-                widget.isAdmin
-                    ? Icons.person
-                    : Icons.admin_panel_settings,
-                color: AppColors.primary,
-                size: width * 0.05,
-              )
-                  : null,
-            ),
-            SizedBox(width: width * 0.03),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.otherUserName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (_isOtherTyping)
-                    Text(
-                      'typing...',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white.withOpacity(0.8),
-                        fontStyle: FontStyle.italic,
-                      ),
-                    )
-                  else
-                    Text(
-                      'Online',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.green.shade300,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: Column(
+      body: Stack(
         children: [
-          // Messages
-          Expanded(
-            child: StreamBuilder<List<MessageModel>>(
-              stream: _service.getMessages(widget.chatId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final messages = snapshot.data ?? [];
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline,
-                            size: width * 0.15,
-                            color: Colors.grey.shade300),
-                        SizedBox(height: height * 0.02),
-                        Text(
-                          'Start the conversation!',
-                          style: TextStyle(
-                            fontSize: width * 0.045,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                // Auto scroll
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scrollController.hasClients) {
-                    _scrollController.jumpTo(
-                        _scrollController.position.maxScrollExtent);
-                  }
-                });
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: EdgeInsets.symmetric(vertical: height * 0.01),
-                  itemCount: messages.length + (_isOtherTyping ? 1 : 0),
-                  itemBuilder: (context, i) {
-                    if (i == messages.length && _isOtherTyping) {
-                      return const TypingIndicator();
-                    }
-                    return ChatBubble(
-                      message: messages[i],
-                      currentUserId: _user!.uid,
-                    );
-                  },
-                );
-              },
+          // 1. Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: AssetImage('assets/images/home_bg.jpg'),
+                fit: BoxFit.cover,
+              ),
             ),
           ),
-
-          // Input
+          // 2. Dark Overlay
           Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: width * 0.03,
-              vertical: height * 0.012,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -3),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  // Image picker
-                  GestureDetector(
-                    onTap: _isUploading ? null : _pickAndSendImage,
+            color: Colors.black.withOpacity(0.6),
+          ),
+          // 3. Main Content
+          SafeArea(
+            child: Column(
+              children: [
+                // --- CUSTOM TOP HEADER (GLASS) ---
+                ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Container(
-                      padding: EdgeInsets.all(width * 0.025),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: width * 0.03,
+                        vertical: height * 0.01,
                       ),
-                      child: _isUploading
-                          ? SizedBox(
-                        width: width * 0.05,
-                        height: width * 0.05,
-                        child: const CircularProgressIndicator(
-                            strokeWidth: 2),
-                      )
-                          : Icon(Icons.image,
-                          color: AppColors.primary, size: width * 0.055),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        border: Border(
+                          bottom: BorderSide(color: Colors.white.withOpacity(0.2)),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                          CircleAvatar(
+                            radius: width * 0.045,
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            backgroundImage: widget.otherUserPhoto.isNotEmpty
+                                ? NetworkImage(widget.otherUserPhoto)
+                                : null,
+                            child: widget.otherUserPhoto.isEmpty
+                                ? Icon(
+                                    widget.isAdmin ? Icons.person : Icons.admin_panel_settings,
+                                    color: Colors.white,
+                                    size: width * 0.05,
+                                  )
+                                : null,
+                          ),
+                          SizedBox(width: width * 0.03),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.otherUserName,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                if (_isOtherTyping)
+                                  const Text(
+                                    'typing...',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.white70,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  )
+                                else
+                                  Text(
+                                    'Online',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.green.shade300,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  SizedBox(width: width * 0.02),
-
-                  // Text field
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: TextField(
-                        controller: _messageController,
-                        onChanged: (v) {
-                          _service.setTyping(
-                              widget.chatId, !widget.isAdmin, v.isNotEmpty);
-                        },
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
-                        decoration: InputDecoration(
-                          hintText: 'Type a message...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: width * 0.04,
-                            vertical: height * 0.015,
+                ),
+                // --- MESSAGES ---
+                Expanded(
+                  child: StreamBuilder<List<MessageModel>>(
+                    stream: _service.getMessages(widget.chatId),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator(color: Colors.white));
+                      }
+                      final messages = snapshot.data ?? [];
+                      if (messages.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.chat_bubble_outline, size: width * 0.15, color: Colors.white70),
+                              SizedBox(height: height * 0.02),
+                              Text(
+                                'Start the conversation!',
+                                style: TextStyle(
+                                  fontSize: width * 0.045,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
+                        );
+                      }
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (_scrollController.hasClients) {
+                          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+                        }
+                      });
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: EdgeInsets.symmetric(vertical: height * 0.01),
+                        itemCount: messages.length + (_isOtherTyping ? 1 : 0),
+                        itemBuilder: (context, i) {
+                          if (i == messages.length && _isOtherTyping) {
+                            return const TypingIndicator();
+                          }
+                          return ChatBubble(
+                            message: messages[i],
+                            currentUserId: _user!.uid,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                // --- INPUT AREA (GLASS) ---
+                ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: width * 0.03,
+                        vertical: height * 0.012,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        border: Border(
+                          top: BorderSide(color: Colors.white.withOpacity(0.2)),
+                        ),
+                      ),
+                      child: SafeArea(
+                        child: Row(
+                          children: [
+                            GestureDetector(
+                              onTap: _isUploading ? null : _pickAndSendImage,
+                              child: Container(
+                                padding: EdgeInsets.all(width * 0.025),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                ),
+                                child: _isUploading
+                                    ? SizedBox(
+                                        width: width * 0.05,
+                                        height: width * 0.05,
+                                        child: const CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                      )
+                                    : Icon(Icons.image, color: Colors.white, size: width * 0.055),
+                              ),
+                            ),
+                            SizedBox(width: width * 0.02),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                ),
+                                child: TextField(
+                                  controller: _messageController,
+                                  style: const TextStyle(color: Colors.white),
+                                  onChanged: (v) {
+                                    _service.setTyping(widget.chatId, !widget.isAdmin, v.isNotEmpty);
+                                  },
+                                  textInputAction: TextInputAction.send,
+                                  onSubmitted: (_) => _sendMessage(),
+                                  decoration: InputDecoration(
+                                    hintText: 'Type a message...',
+                                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: width * 0.04,
+                                      vertical: height * 0.015,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: width * 0.02),
+                            GestureDetector(
+                              onTap: _sendMessage,
+                              child: Container(
+                                padding: EdgeInsets.all(width * 0.03),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentGold,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.accentGold.withOpacity(0.4),
+                                      blurRadius: 12,
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(Icons.send, color: Colors.black, size: width * 0.055),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                  SizedBox(width: width * 0.02),
-
-                  // Send button
-                  GestureDetector(
-                    onTap: _sendMessage,
-                    child: Container(
-                      padding: EdgeInsets.all(width * 0.03),
-                      decoration: const BoxDecoration(
-                        gradient: AppColors.mainGradient,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.send,
-                          color: Colors.white, size: width * 0.055),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

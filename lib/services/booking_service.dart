@@ -54,8 +54,10 @@ class BookingService {
         'itemName': booking.itemName,
         'amount': booking.amount,
         'currency': booking.currency,
-        'method': booking.paymentMethod.isNotEmpty ? booking.paymentMethod : 'cash',
-        'status': 'pending',
+        'method': (booking.paymentMethod != null && booking.paymentMethod!.isNotEmpty)
+            ? booking.paymentMethod
+            : 'cash',
+        'status': (booking.paymentMethod == 'cash') ? 'pending' : 'completed',
         'transactionId': '',
         'reference': '',
         'notes': '',

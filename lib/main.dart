@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'utils/colors.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -20,6 +21,9 @@ void main() async {
       storageBucket: "turiva.firebasestorage.app",
     ),
   );
+
+  // ⭐️ Connect to Functions Emulator (kwa testing tu)
+  FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
 
   // Start listening for notifications
   FirebaseAuth.instance.authStateChanges().listen((user) {

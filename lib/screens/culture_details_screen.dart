@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -131,6 +132,29 @@ class _CultureDetailsScreenState extends State<CultureDetailsScreen> {
     }
   }
 
+  Future<void> _openInGoogleMaps() async {
+    final lat = widget.culture['latitude'];
+    final lng = widget.culture['longitude'];
+
+    if (lat == null || lng == null || lat == 0 || lng == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('📍 Location not available'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -144,727 +168,752 @@ class _CultureDetailsScreenState extends State<CultureDetailsScreen> {
     final categoryIcon = getCategoryIcon(category);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: height * 0.4,
-            pinned: true,
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.4),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.arrow_back,
-                    color: Colors.white, size: 20),
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-            actions: [
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.4),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: _isLiked ? Colors.red : Colors.white,
-                    size: 22,
-                  ),
-                ),
-                onPressed: _toggleLike,
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  images.isEmpty
-                      ? Container(
-                    color: categoryColor.withOpacity(0.5),
-                    child: Icon(categoryIcon,
-                        size: 80, color: Colors.white),
-                  )
-                      : PageView.builder(
-                    itemCount: images.length,
-                    onPageChanged: (i) =>
-                        setState(() => _currentImageIndex = i),
-                    itemBuilder: (context, i) => Image.network(
-                      images[i],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Icon(Icons.broken_image,
-                            size: 80, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.6),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (images.length > 1)
-                    Positioned(
-                      bottom: 16,
-                      right: 16,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.6),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${_currentImageIndex + 1} / ${images.length}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
               ),
             ),
           ),
-
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(width * 0.05),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // CATEGORY BADGE
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+          // 2. Dark Overlay
+          Container(
+            color: Colors.black.withOpacity(0.55),
+          ),
+          // 3. Your Existing CustomScrollView
+          CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                expandedHeight: height * 0.4,
+                pinned: true,
+                backgroundColor: Colors.transparent, // CHANGED
+                foregroundColor: Colors.white,
+                leading: IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: categoryColor,
-                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.black.withOpacity(0.4),
+                      shape: BoxShape.circle,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(categoryIcon,
-                            color: Colors.white, size: 14),
-                        const SizedBox(width: 5),
-                        Text(
-                          category.toString().toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
+                    child: const Icon(Icons.arrow_back,
+                        color: Colors.white, size: 20),
                   ),
-
-                  SizedBox(height: height * 0.015),
-
-                  // NAME
-                  Text(
-                    widget.culture['name'] ?? '',
-                    style: TextStyle(
-                      fontSize: width * 0.07,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade900,
-                    ),
-                  ),
-
-                  if ((widget.culture['subCategory'] ?? '')
-                      .toString()
-                      .isNotEmpty) ...[
-                    SizedBox(height: height * 0.005),
-                    Text(
-                      widget.culture['subCategory'],
-                      style: TextStyle(
-                        fontSize: width * 0.04,
-                        color: categoryColor,
-                        fontWeight: FontWeight.w600,
+                  onPressed: () => Navigator.pop(context),
+                ),
+                actions: [
+                  IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.4),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isLiked ? Icons.favorite : Icons.favorite_border,
+                        color: _isLiked ? Colors.red : Colors.white,
+                        size: 22,
                       ),
                     ),
-                  ],
-
-                  SizedBox(height: height * 0.01),
-
-                  // LOCATION
-                  if ((widget.culture['location'] ?? '')
-                      .toString()
-                      .isNotEmpty)
-                    Row(
-                      children: [
-                        Icon(Icons.location_on,
-                            color: AppColors.primary,
-                            size: width * 0.05),
-                        SizedBox(width: width * 0.02),
-                        Expanded(
-                          child: Text(
-                            '${widget.culture['location']}, ${widget.culture['region'] ?? ''}, ${widget.culture['country'] ?? ''}',
-                            style: TextStyle(
-                              fontSize: width * 0.038,
-                              color: Colors.grey.shade600,
+                    onPressed: _toggleLike,
+                  ),
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      images.isEmpty
+                          ? Container(
+                        color: categoryColor.withOpacity(0.5),
+                        child: Icon(categoryIcon,
+                            size: 80, color: Colors.white),
+                      )
+                          : PageView.builder(
+                        itemCount: images.length,
+                        onPageChanged: (i) =>
+                            setState(() => _currentImageIndex = i),
+                        itemBuilder: (context, i) => Image.network(
+                          images[i],
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.grey.shade300,
+                            child: const Icon(Icons.broken_image,
+                                size: 80, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.6),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-
-                  SizedBox(height: height * 0.02),
-
-                  // FEATURED + RATING + FEE
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if (widget.culture['featured'] == true)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentGold,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.star,
-                                  size: 16, color: Colors.black),
-                              SizedBox(width: 5),
-                              Text(
-                                'FEATURED',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
+                      ),
+                      if (images.length > 1)
+                        Positioned(
+                          bottom: 16,
+                          right: 16,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${_currentImageIndex + 1} / ${images.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
                               ),
-                            ],
-                          ),
-                        ),
-                      if ((widget.culture['rating'] ?? 0) > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentGold.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star,
-                                  color: AppColors.accentGold, size: 16),
-                              const SizedBox(width: 4),
-                              Text(
-                                (widget.culture['rating'] as num)
-                                    .toStringAsFixed(1),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if ((widget.culture['entryFee'] ?? 0) > 0)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.green.shade200),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.attach_money,
-                                  color: Colors.green.shade700, size: 16),
-                              Text(
-                                '${widget.culture['currency'] ?? 'USD'} ${(widget.culture['entryFee'] as num).toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color: Colors.green.shade700,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
                     ],
                   ),
+                ),
+              ),
 
-                  SizedBox(height: height * 0.025),
-
-                  // DESCRIPTION
-                  if ((widget.culture['description'] ?? '')
-                      .toString()
-                      .isNotEmpty) ...[
-                    _sectionTitle('📖 About', width),
-                    SizedBox(height: height * 0.01),
-                    Text(
-                      widget.culture['description'],
-                      style: TextStyle(
-                        fontSize: width * 0.037,
-                        color: Colors.grey.shade700,
-                        height: 1.6,
-                      ),
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // LANGUAGES
-                  if (languages.isNotEmpty) ...[
-                    _sectionTitle('🗣️ Languages Spoken', width),
-                    SizedBox(height: height * 0.01),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: languages.map((l) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade50,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: Colors.purple.shade200),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.language,
-                                  color: Colors.purple.shade700,
-                                  size: 14),
-                              const SizedBox(width: 5),
-                              Text(l.toString(),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.purple.shade700,
-                                    fontWeight: FontWeight.w600,
-                                  )),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(width * 0.05),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // CATEGORY BADGE
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: categoryColor,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(categoryIcon,
+                                color: Colors.white, size: 14),
+                            const SizedBox(width: 5),
+                            Text(
+                              category.toString().toUpperCase(),
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                             ],
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
+                        ),
 
-                  // HIGHLIGHTS
-                  if (highlights.isNotEmpty) ...[
-                    _sectionTitle('✨ Highlights', width),
-                    SizedBox(height: height * 0.01),
-                    ...highlights.map((h) {
-                      return Padding(
-                        padding: EdgeInsets.symmetric(
-                            vertical: width * 0.01),
-                        child: Row(
+                      SizedBox(height: height * 0.015),
+
+                      // NAME
+                      Text(
+                        widget.culture['name'] ?? '',
+                        style: TextStyle(
+                          fontSize: width * 0.07,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white, // CHANGED
+                        ),
+                      ),
+
+                      if ((widget.culture['subCategory'] ?? '')
+                          .toString()
+                          .isNotEmpty) ...[
+                        SizedBox(height: height * 0.005),
+                        Text(
+                          widget.culture['subCategory'],
+                          style: TextStyle(
+                            fontSize: width * 0.04,
+                            color: categoryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+
+                      SizedBox(height: height * 0.01),
+
+                      // LOCATION
+                      if ((widget.culture['location'] ?? '')
+                          .toString()
+                          .isNotEmpty) ...[
+                        Row(
                           children: [
-                            Icon(Icons.star,
-                                color: AppColors.accentGold,
+                            Icon(Icons.location_on,
+                                color: AppColors.primary,
                                 size: width * 0.05),
                             SizedBox(width: width * 0.02),
                             Expanded(
                               child: Text(
-                                h.toString(),
+                                '${widget.culture['location']}, ${widget.culture['region'] ?? ''}, ${widget.culture['country'] ?? ''}',
                                 style: TextStyle(
-                                  fontSize: width * 0.035,
-                                  color: Colors.grey.shade800,
+                                  fontSize: width * 0.038,
+                                  color: Colors.white70, // CHANGED
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      );
-                    }),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // ACTIVITIES
-                  if (activities.isNotEmpty) ...[
-                    _sectionTitle('🎯 Activities', width),
-                    SizedBox(height: height * 0.01),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: activities.map((a) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                                color: categoryColor.withOpacity(0.3)),
+                        const SizedBox(height: 6),
+                        TextButton.icon(
+                          onPressed: _openInGoogleMaps,
+                          icon: const Icon(Icons.map, size: 16),
+                          label: const Text(
+                            'Open in Google Maps',
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          child: Text(a.toString(),
-                              style: const TextStyle(fontSize: 13)),
-                        );
-                      }).toList(),
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // GALLERY
-                  if (images.length > 1) ...[
-                    _sectionTitle('📸 Gallery', width),
-                    SizedBox(height: height * 0.01),
-                    SizedBox(
-                      height: height * 0.1,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: images.length,
-                        itemBuilder: (context, i) {
-                          return GestureDetector(
-                            onTap: () => setState(
-                                    () => _currentImageIndex = i),
-                            child: Container(
-                              margin:
-                              EdgeInsets.only(right: width * 0.02),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.network(
-                                  images[i],
-                                  width: height * 0.1,
-                                  height: height * 0.1,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      Container(
-                                        color: Colors.grey.shade200,
-                                        child: const Icon(
-                                            Icons.broken_image),
-                                      ),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // MAP
-                  if ((widget.culture['latitude'] ?? 0) != 0 &&
-                      (widget.culture['longitude'] ?? 0) != 0) ...[
-                    _sectionTitle('📍 Location', width),
-                    SizedBox(height: height * 0.01),
-                    GestureDetector(
-                      onTap: _openMap,
-                      child: Container(
-                        padding: EdgeInsets.all(width * 0.05),
-                        decoration: BoxDecoration(
-                          color: categoryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: categoryColor.withOpacity(0.3)),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 0),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.map,
-                                color: categoryColor,
-                                size: width * 0.08),
-                            SizedBox(width: width * 0.03),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                      ],
+
+                      SizedBox(height: height * 0.02),
+
+                      // FEATURED + RATING + FEE
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          if (widget.culture['featured'] == true)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.accentGold,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  Icon(Icons.star,
+                                      size: 16, color: Colors.black),
+                                  SizedBox(width: 5),
                                   Text(
-                                    'View on Map',
+                                    'FEATURED',
                                     style: TextStyle(
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: width * 0.04,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Tap to open in Google Maps',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: width * 0.03,
+                                      color: Colors.black,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            Icon(Icons.arrow_forward_ios,
-                                size: width * 0.035,
-                                color: Colors.grey.shade400),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // CONTACT
-                  if ((widget.culture['contactInfo'] ?? '')
-                      .toString()
-                      .isNotEmpty) ...[
-                    _sectionTitle('📞 Contact', width),
-                    SizedBox(height: height * 0.01),
-                    Container(
-                      padding: EdgeInsets.all(width * 0.04),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Text(
-                        widget.culture['contactInfo'],
-                        style: TextStyle(
-                          fontSize: width * 0.035,
-                          color: Colors.grey.shade800,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  SizedBox(height: height * 0.03),
-
-                  // ACTION BUTTONS
-                  Row(
-                    children: [
-                      GestureDetector(
-                        onTap: _toggleLike,
-                        child: Container(
-                          padding: EdgeInsets.all(width * 0.04),
-                          decoration: BoxDecoration(
-                            color: _isLiked
-                                ? Colors.red.withOpacity(0.1)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: _isLiked
-                                  ? Colors.red
-                                  : Colors.grey.shade300,
-                              width: 2,
+                          if ((widget.culture['rating'] ?? 0) > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.accentGold.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.star,
+                                      color: AppColors.accentGold, size: 16),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    (widget.culture['rating'] as num)
+                                        .toStringAsFixed(1),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Colors.white, // WHITE
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          child: Icon(
-                            _isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: _isLiked
-                                ? Colors.red
-                                : Colors.grey.shade600,
-                            size: width * 0.07,
+                          if ((widget.culture['entryFee'] ?? 0) > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15), // GLASS
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.attach_money,
+                                      color: Colors.white70, size: 16),
+                                  Text(
+                                    '${widget.culture['currency'] ?? 'USD'} ${(widget.culture['entryFee'] as num).toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      SizedBox(height: height * 0.025),
+
+                      // DESCRIPTION
+                      if ((widget.culture['description'] ?? '')
+                          .toString()
+                          .isNotEmpty) ...[
+                        _sectionTitle('📖 About', width),
+                        SizedBox(height: height * 0.01),
+                        Text(
+                          widget.culture['description'],
+                          style: TextStyle(
+                            fontSize: width * 0.037,
+                            color: Colors.white70, // CHANGED
+                            height: 1.6,
                           ),
                         ),
-                      ),
-                      SizedBox(width: width * 0.03),
-                      GestureDetector(
-                        onTap: () async {
-                          if (_user == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Please login first')),
-                            );
-                            return;
-                          }
-                          final cartService = CartService();
-                          final added = await cartService.addToCart(_user!.uid, CartItem(
-                            itemId: widget.culture['id'],
-                            itemType: 'culture',
-                            itemName: widget.culture['name'] ?? '',
-                            itemImage: widget.culture['imageUrl'] ?? '',
-                            price: (widget.culture['entryFee'] ?? 0).toDouble(),
-                            currency: widget.culture['currency'] ?? 'USD',
-                          ));
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(added ? '🛒 Added to cart!' : '❌ Failed'),
-                                backgroundColor: added ? Colors.green : Colors.red,
+                        SizedBox(height: height * 0.025),
+                      ],
+
+                      // LANGUAGES
+                      if (languages.isNotEmpty) ...[
+                        _sectionTitle('🗣️ Languages Spoken', width),
+                        SizedBox(height: height * 0.01),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: languages.map((l) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15), // GLASS
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.language, color: Colors.white70, size: 14),
+                                  const SizedBox(width: 5),
+                                  Text(l.toString(),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      )),
+                                ],
                               ),
                             );
-                          }
-                        },
-                        child: Container(
-                          padding: EdgeInsets.all(width * 0.04),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey.shade300, width: 2),
-                          ),
-                          child: Icon(Icons.shopping_cart_outlined,
-                              color: AppColors.primary, size: width * 0.07),
+                          }).toList(),
                         ),
-                      ),
-                      SizedBox(width: width * 0.03),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BookingScreen(
-                                  itemType: 'culture',
-                                  itemId: widget.culture['id'],
-                                  itemName: widget.culture['name'] ?? '',
-                                  itemImage:
-                                  widget.culture['imageUrl'] ?? '',
-                                  price: (widget.culture['entryFee'] ?? 0)
-                                      .toDouble(),
-                                  currency:
-                                  widget.culture['currency'] ?? 'USD',
-                                ),
-                              ),
-                            );
-                          },
-                          child: Container(
+                        SizedBox(height: height * 0.025),
+                      ],
+
+                      // HIGHLIGHTS
+                      if (highlights.isNotEmpty) ...[
+                        _sectionTitle('✨ Highlights', width),
+                        SizedBox(height: height * 0.01),
+                        ...highlights.map((h) {
+                          return Padding(
                             padding: EdgeInsets.symmetric(
-                                vertical: height * 0.022),
-                            decoration: BoxDecoration(
-                              gradient: AppColors.mainGradient,
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary
-                                      .withOpacity(0.4),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 5),
+                                vertical: width * 0.01),
+                            child: Row(
+                              children: [
+                                Icon(Icons.star,
+                                    color: AppColors.accentGold,
+                                    size: width * 0.05),
+                                SizedBox(width: width * 0.02),
+                                Expanded(
+                                  child: Text(
+                                    h.toString(),
+                                    style: TextStyle(
+                                      fontSize: width * 0.035,
+                                      color: Colors.white70, // CHANGED
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
-                            child: const Center(
-                              child: Text(
-                                'BOOK EXPERIENCE',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
-                                ),
+                          );
+                        }),
+                        SizedBox(height: height * 0.025),
+                      ],
+
+                      // ACTIVITIES
+                      if (activities.isNotEmpty) ...[
+                        _sectionTitle('🎯 Activities', width),
+                        SizedBox(height: height * 0.01),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: activities.map((a) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15), // GLASS
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withOpacity(0.3)),
                               ),
+                              child: Text(a.toString(),
+                                  style: const TextStyle(fontSize: 13, color: Colors.white)),
+                            );
+                          }).toList(),
+                        ),
+                        SizedBox(height: height * 0.025),
+                      ],
+
+                      // GALLERY
+                      if (images.length > 1) ...[
+                        _sectionTitle('📸 Gallery', width),
+                        SizedBox(height: height * 0.01),
+                        SizedBox(
+                          height: height * 0.1,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: images.length,
+                            itemBuilder: (context, i) {
+                              return GestureDetector(
+                                onTap: () => setState(
+                                        () => _currentImageIndex = i),
+                                child: Container(
+                                  margin:
+                                  EdgeInsets.only(right: width * 0.02),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.network(
+                                      images[i],
+                                      width: height * 0.1,
+                                      height: height * 0.1,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) =>
+                                          Container(
+                                            color: Colors.grey.shade200,
+                                            child: const Icon(
+                                                Icons.broken_image),
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(height: height * 0.025),
+                      ],
+
+                      // MAP
+                      if ((widget.culture['latitude'] ?? 0) != 0 &&
+                          (widget.culture['longitude'] ?? 0) != 0) ...[
+                        _sectionTitle('📍 Location', width),
+                        SizedBox(height: height * 0.01),
+                        GestureDetector(
+                          onTap: _openMap,
+                          child: Container(
+                            padding: EdgeInsets.all(width * 0.05),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1), // GLASS
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.white.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.map, color: categoryColor, size: width * 0.08),
+                                SizedBox(width: width * 0.03),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'View on Map',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: width * 0.04,
+                                          color: Colors.white, // WHITE
+                                        ),
+                                      ),
+                                      Text(
+                                        'Tap to open in Google Maps',
+                                        style: TextStyle(
+                                          color: Colors.white70, // WHITE70
+                                          fontSize: width * 0.03,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(Icons.arrow_forward_ios,
+                                    size: width * 0.035, color: Colors.white70),
+                              ],
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                        SizedBox(height: height * 0.025),
+                      ],
 
-                  SizedBox(height: height * 0.03),
+                      // CONTACT
+                      if ((widget.culture['contactInfo'] ?? '')
+                          .toString()
+                          .isNotEmpty) ...[
+                        _sectionTitle('📞 Contact', width),
+                        SizedBox(height: height * 0.01),
+                        Container(
+                          padding: EdgeInsets.all(width * 0.04),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15), // GLASS
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            widget.culture['contactInfo'],
+                            style: TextStyle(
+                              fontSize: width * 0.035,
+                              color: Colors.white, // WHITE
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: height * 0.025),
+                      ],
 
-                  // REVIEWS
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      FutureBuilder<Map<String, dynamic>>(
-                        future: ReviewService().getItemRatingStats(widget.culture['id']),
-                        builder: (context, snapshot) {
-                          final stats = snapshot.data ?? {};
-                          final avg = (stats['average'] ?? 0.0).toStringAsFixed(1);
-                          final total = stats['total'] ?? 0;
-                          return Row(
-                            children: [
-                              _sectionTitle('⭐ Reviews', width),
-                              SizedBox(width: width * 0.02),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accentGold.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.star, color: AppColors.accentGold, size: 14),
-                                    SizedBox(width: width * 0.01),
-                                    Text(
-                                      '$avg ($total)',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
+                      SizedBox(height: height * 0.03),
+
+                      // ACTION BUTTONS
+                      Row(
+                        children: [
+                          // LIKE BUTTON
+                          GestureDetector(
+                            onTap: _toggleLike,
+                            child: Container(
+                              padding: EdgeInsets.all(width * 0.04),
+                              decoration: BoxDecoration(
+                                color: _isLiked
+                                    ? Colors.red.withOpacity(0.2)
+                                    : Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: _isLiked
+                                      ? Colors.red
+                                      : Colors.white.withOpacity(0.3),
+                                  width: 1.5,
                                 ),
                               ),
-                            ],
-                          );
-                        },
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ReviewsListScreen(
+                              child: Icon(
+                                _isLiked ? Icons.favorite : Icons.favorite_border,
+                                color: _isLiked ? Colors.red : Colors.white,
+                                size: width * 0.07,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: width * 0.03),
+
+                          // CART BUTTON
+                          GestureDetector(
+                            onTap: () async {
+                              if (_user == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Please login first')),
+                                );
+                                return;
+                              }
+                              final cartService = CartService();
+                              final added = await cartService.addToCart(_user!.uid, CartItem(
                                 itemId: widget.culture['id'],
                                 itemType: 'culture',
                                 itemName: widget.culture['name'] ?? '',
+                                itemImage: widget.culture['imageUrl'] ?? '',
+                                price: (widget.culture['entryFee'] ?? 0).toDouble(),
+                                currency: widget.culture['currency'] ?? 'USD',
+                              ));
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(added ? '🛒 Added to cart!' : '❌ Failed'),
+                                    backgroundColor: added ? Colors.green : Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                            child: Container(
+                              padding: EdgeInsets.all(width * 0.04),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15), // GLASS
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.white.withOpacity(0.3), width: 1.5),
+                              ),
+                              child: Icon(Icons.shopping_cart_outlined,
+                                  color: Colors.white, size: width * 0.07),
+                            ),
+                          ),
+                          SizedBox(width: width * 0.03),
+
+                          // BOOK EXPERIENCE BUTTON
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BookingScreen(
+                                      itemType: 'culture',
+                                      itemId: widget.culture['id'],
+                                      itemName: widget.culture['name'] ?? '',
+                                      itemImage: widget.culture['imageUrl'] ?? '',
+                                      price: (widget.culture['entryFee'] ?? 0).toDouble(),
+                                      currency: widget.culture['currency'] ?? 'USD',
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(vertical: height * 0.022),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentGold, // GOLD
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.accentGold.withOpacity(0.4),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'BOOK EXPERIENCE',
+                                    style: TextStyle(
+                                      color: Colors.black, // BLACK on gold
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: height * 0.03),
+
+                      // REVIEWS
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          FutureBuilder<Map<String, dynamic>>(
+                            future: ReviewService().getItemRatingStats(widget.culture['id']),
+                            builder: (context, snapshot) {
+                              final stats = snapshot.data ?? {};
+                              final avg = (stats['average'] ?? 0.0).toStringAsFixed(1);
+                              final total = stats['total'] ?? 0;
+                              return Row(
+                                children: [
+                                  _sectionTitle('⭐ Reviews', width),
+                                  SizedBox(width: width * 0.02),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accentGold.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.star, color: AppColors.accentGold, size: 14),
+                                        SizedBox(width: width * 0.01),
+                                        Text(
+                                          '$avg ($total)',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ReviewsListScreen(
+                                    itemId: widget.culture['id'],
+                                    itemType: 'culture',
+                                    itemName: widget.culture['name'] ?? '',
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text('See All'),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: height * 0.01),
+                      StreamBuilder<List<ReviewModel>>(
+                        stream: ReviewService().getItemReviews(widget.culture['id']),
+                        builder: (context, snapshot) {
+                          final reviews = snapshot.data ?? [];
+                          if (reviews.isEmpty) {
+                            return Container(
+                              padding: EdgeInsets.all(width * 0.05),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1), // GLASS
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                              ),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.rate_review, color: Colors.white70, size: 32),
+                                    SizedBox(height: height * 0.01),
+                                    Text('No reviews yet',
+                                        style: TextStyle(color: Colors.white70)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: reviews.take(2).map((r) {
+                              return ReviewCard(
+                                review: r,
+                                currentUserId: _user?.uid,
+                                onHelpfulTap: () async {
+                                  if (_user == null) return;
+                                  await ReviewService().markHelpful(r.id, _user!.uid);
+                                },
+                              );
+                            }).toList(),
                           );
                         },
-                        child: const Text('See All'),
                       ),
+
+                      SizedBox(height: height * 0.05),
                     ],
                   ),
-                  SizedBox(height: height * 0.01),
-                  StreamBuilder<List<ReviewModel>>(
-                    stream: ReviewService().getItemReviews(widget.culture['id']),
-                    builder: (context, snapshot) {
-                      final reviews = snapshot.data ?? [];
-                      if (reviews.isEmpty) {
-                        return Container(
-                          padding: EdgeInsets.all(width * 0.05),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
-                                SizedBox(height: height * 0.01),
-                                Text('No reviews yet',
-                                    style: TextStyle(color: Colors.grey.shade500)),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                      return Column(
-                        children: reviews.take(2).map((r) {
-                          return ReviewCard(
-                            review: r,
-                            currentUserId: _user?.uid,
-                            onHelpfulTap: () async {
-                              if (_user == null) return;
-                              await ReviewService().markHelpful(r.id, _user!.uid);
-                            },
-                          );
-                        }).toList(),
-                      );
-                    },
-                  ),
-
-                  SizedBox(height: height * 0.05),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -877,7 +926,7 @@ class _CultureDetailsScreenState extends State<CultureDetailsScreen> {
       style: TextStyle(
         fontSize: width * 0.05,
         fontWeight: FontWeight.bold,
-        color: Colors.grey.shade900,
+        color: Colors.white, // CHANGED
       ),
     );
   }

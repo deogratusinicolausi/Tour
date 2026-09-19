@@ -3,7 +3,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../utils/colors.dart';
 import '../services/image_service.dart';
 import 'hotels_list_screen.dart';
-import 'explore_all_screen.dart';
 import 'tours_list_screen.dart';
 import 'beaches_list_screen.dart';
 import 'mountains_list_screen.dart';
