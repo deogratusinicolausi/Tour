@@ -7,6 +7,8 @@ import 'profile_screen.dart';
 import '../utils/colors.dart';
 import 'trip_cart_screen.dart';
 import 'search_screen.dart';
+import 'hand_control_screen.dart';
+import '../services/hand_action_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,6 +19,74 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  final HandActionService _handActionService = HandActionService.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _handActionService.currentAction.addListener(
+      _handleHandAction,
+    );
+  }
+
+  @override
+  void dispose() {
+    _handActionService.currentAction.removeListener(
+      _handleHandAction,
+    );
+    super.dispose();
+  }
+
+  void _handleHandAction() {
+    final action = _handActionService.currentAction.value;
+
+    switch (action) {
+      case HandAction.back:
+        debugPrint('✊ Back action received by MainScreen');
+        break;
+
+      case HandAction.next:
+        _goToNextPage();
+        break;
+
+      case HandAction.previous:
+        _goToPreviousPage();
+        break;
+
+      case HandAction.select:
+        debugPrint('👆 Select action detected');
+        break;
+
+      case HandAction.confirm:
+        debugPrint('👍 Confirm action detected');
+        break;
+
+      case HandAction.pause:
+        debugPrint('✋ Hand control paused');
+        break;
+
+      case HandAction.none:
+        break;
+    }
+
+    _handActionService.reset();
+  }
+
+  void _goToNextPage() {
+    if (_selectedIndex < _pages.length - 1) {
+      setState(() {
+        _selectedIndex++;
+      });
+    }
+  }
+
+  void _goToPreviousPage() {
+    if (_selectedIndex > 0) {
+      setState(() {
+        _selectedIndex--;
+      });
+    }
+  }
 
   final List<Widget> _pages = [
     const HomeScreen(),
@@ -29,7 +99,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, // Transparent so the background image shows
+      backgroundColor: Colors.white, // Transparent so the background image shows
       extendBody: true,
       body: Stack(
         children: [
@@ -54,7 +124,25 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-      // 3. The actual nav bar on top (no clipping wrapper here)
+      // 🤚 TEMPORARY HAND CONTROL TEST BUTTON
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.accentGold,
+        foregroundColor: Colors.black,
+        tooltip: 'Hand Control',
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HandControlScreen(),
+            ),
+          );
+        },
+        child: const Icon(
+          Icons.pan_tool_alt,
+          size: 28,
+        ),
+      ),
+      // 3. The actual nav bar
       bottomNavigationBar: CurvedNavigationBar(
         index: _selectedIndex,
         height: 75.0, // Reduced to 75.0 to satisfy the package constraint (0 <= height <= 75.0)

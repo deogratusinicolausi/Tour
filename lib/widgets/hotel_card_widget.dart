@@ -53,7 +53,7 @@ class HotelGridCard extends StatelessWidget {
                 children: [
                   Hero(
                     tag: 'hotel_${hotel['id']}',
-                    child: _buildImage(height * 0.11, width),
+                    child: _buildImage(height * 0.21, width),
                   ),
 
                   // Featured badge
@@ -96,7 +96,7 @@ class HotelGridCard extends StatelessWidget {
                   // Rating
                   if ((hotel['rating'] ?? 0) > 0)
                     Positioned(
-                      bottom: 8,
+                      bottom: 4,
                       left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -126,8 +126,8 @@ class HotelGridCard extends StatelessWidget {
 
                   // Like button
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 4,
+                    right: 4,
                     child: GestureDetector(
                       onTap: onLike,
                       child: Container(
@@ -191,11 +191,11 @@ class HotelGridCard extends StatelessWidget {
             ),
 
             // Info
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(width * 0.025),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: EdgeInsets.all(width * 0.035),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       hotel['name'] ?? 'Unnamed',
@@ -204,10 +204,9 @@ class HotelGridCard extends StatelessWidget {
                         fontSize: width * 0.032,
                         color: Colors.white, // WHITE
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const Spacer(),
                     Row(
                       children: [
                         Icon(Icons.location_on,
@@ -253,8 +252,7 @@ class HotelGridCard extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
-          ],
+            ]
         ),
       ),
     );
@@ -488,6 +486,7 @@ class ShimmerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final height = MediaQuery.of(context).size.height;
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1), // GLASS
@@ -497,21 +496,22 @@ class ShimmerCard extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            height: 150,
+            height: height * 0.11,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.1), // GLASS
               borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(18)),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 14,
-                  width: double.infinity,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 14,
+                    width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(4),
@@ -529,6 +529,7 @@ class ShimmerCard extends StatelessWidget {
               ],
             ),
           ),
+          )
         ],
       ),
     );

@@ -38,8 +38,8 @@ class FirestoreService {
         .limit(10)
         .snapshots()
         .map((snapshot) => snapshot.docs
-        .map((doc) => {'id': doc.id, ...doc.data()})
-        .toList());
+            .map((doc) => {'id': doc.id, ...doc.data()})
+            .toList());
   }
 
   Stream<List<Map<String, dynamic>>> getDestinationsByCountry(

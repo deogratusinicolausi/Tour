@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
@@ -137,117 +138,167 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
     final height = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('✈️ Create Trip'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(width * 0.05),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _sectionTitle('📝 Trip Details', width),
-              SizedBox(height: height * 0.015),
-              _buildField(_titleController, 'Trip Title', Icons.title,
-                  hint: 'e.g. Tanzania Adventure 2026',
-                  validator: (v) => v!.isEmpty ? 'Title required' : null),
-              SizedBox(height: height * 0.015),
-              _buildField(_descriptionController, 'Description',
-                  Icons.description,
-                  maxLines: 3),
-              SizedBox(height: height * 0.015),
-              _buildField(_travelersController, 'Total Travelers',
-                  Icons.people,
-                  keyboardType: TextInputType.number),
-
-              SizedBox(height: height * 0.025),
-
-              _sectionTitle('📅 Trip Dates', width),
-              SizedBox(height: height * 0.015),
-              Row(
-                children: [
-                  Expanded(
-                    child: _dateBox(
-                      'Start Date',
-                      _startDate,
-                      Icons.calendar_today,
-                          () => _pickDate(isStart: true),
-                      width,
-                    ),
-                  ),
-                  SizedBox(width: width * 0.03),
-                  Expanded(
-                    child: _dateBox(
-                      'End Date',
-                      _endDate,
-                      Icons.event,
-                          () => _pickDate(isStart: false),
-                      width,
-                    ),
-                  ),
-                ],
+      body: Stack(
+        children: [
+          // 1. Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
               ),
-              if (_startDate != null && _endDate != null) ...[
-                SizedBox(height: height * 0.015),
-                Container(
-                  padding: EdgeInsets.all(width * 0.04),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.mainGradient,
-                    borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          // 2. Dark Overlay
+          Container(
+            color: Colors.black.withOpacity(0.55),
+          ),
+          // 3. Main Content
+          SafeArea(
+            child: Column(
+              children: [
+                // --- CUSTOM TOP HEADER ---
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: width * 0.04,
+                    vertical: height * 0.01,
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.timelapse,
-                          color: Colors.white, size: 24),
-                      SizedBox(width: width * 0.03),
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                       Text(
-                        '$_totalDays day${_totalDays > 1 ? 's' : ''} trip',
+                        '✈️ Create Trip',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: width * 0.045,
+                          fontSize: width * 0.055,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
 
-              SizedBox(height: height * 0.03),
+                // --- REST OF YOUR CONTENT ---
+                Expanded(
+                  child: Form(
+                    key: _formKey,
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(width * 0.05),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _sectionTitle('📝 Trip Details', width),
+                          SizedBox(height: height * 0.015),
+                          _buildField(_titleController, 'Trip Title', Icons.title,
+                              hint: 'e.g. Tanzania Adventure 2026',
+                              validator: (v) => v!.isEmpty ? 'Title required' : null),
+                          SizedBox(height: height * 0.015),
+                          _buildField(_descriptionController, 'Description',
+                              Icons.description,
+                              maxLines: 3),
+                          SizedBox(height: height * 0.015),
+                          _buildField(_travelersController, 'Total Travelers',
+                              Icons.people,
+                              keyboardType: TextInputType.number),
 
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _createTrip,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                    '🚀 CREATE TRIP',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1,
+                          SizedBox(height: height * 0.025),
+
+                          _sectionTitle('📅 Trip Dates', width),
+                          SizedBox(height: height * 0.015),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _dateBox(
+                                  'Start Date',
+                                  _startDate,
+                                  Icons.calendar_today,
+                                      () => _pickDate(isStart: true),
+                                  width,
+                                ),
+                              ),
+                              SizedBox(width: width * 0.03),
+                              Expanded(
+                                child: _dateBox(
+                                  'End Date',
+                                  _endDate,
+                                  Icons.event,
+                                      () => _pickDate(isStart: false),
+                                  width,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_startDate != null && _endDate != null) ...[
+                            SizedBox(height: height * 0.015),
+                            Container(
+                              padding: EdgeInsets.all(width * 0.04),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15), // GLASS
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.accentGold.withOpacity(0.5)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.timelapse,
+                                      color: AppColors.accentGold, size: 24), // GOLD
+                                  SizedBox(width: width * 0.03),
+                                  Text(
+                                    '$_totalDays day${_totalDays > 1 ? 's' : ''} trip',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: width * 0.045,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+
+                          SizedBox(height: height * 0.03),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 55,
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _createTrip,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.accentGold, // GOLD
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                elevation: 5,
+                                shadowColor: AppColors.accentGold.withOpacity(0.5),
+                              ),
+                              child: _isLoading
+                                  ? const CircularProgressIndicator(color: Colors.black) // BLACK spinner
+                                  : const Text(
+                                '🚀 CREATE TRIP',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black, // BLACK text
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          SizedBox(height: height * 0.05),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-
-              SizedBox(height: height * 0.05),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -258,7 +309,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       style: TextStyle(
         fontSize: width * 0.045,
         fontWeight: FontWeight.bold,
-        color: Colors.grey.shade800,
+        color: Colors.white, // WHITE
       ),
     );
   }
@@ -277,23 +328,26 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       validator: validator,
       maxLines: maxLines,
       keyboardType: keyboardType,
+      style: const TextStyle(color: Colors.white), // WHITE text
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
         hintText: hint,
-        prefixIcon: Icon(icon),
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+        prefixIcon: Icon(icon, color: Colors.white70),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Colors.white.withOpacity(0.15), // GLASS
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide: const BorderSide(color: AppColors.accentGold, width: 2), // GOLD
         ),
       ),
     );
@@ -311,10 +365,10 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
       child: Container(
         padding: EdgeInsets.all(width * 0.04),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withOpacity(0.15), // GLASS
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: date != null ? AppColors.primary : Colors.grey.shade300,
+            color: date != null ? AppColors.accentGold : Colors.white.withOpacity(0.3), // GOLD when selected
             width: date != null ? 2 : 1,
           ),
         ),
@@ -323,11 +377,11 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, size: width * 0.04, color: AppColors.primary),
+                Icon(icon, size: width * 0.04, color: Colors.white70), // WHITE70
                 SizedBox(width: width * 0.01),
                 Text(label,
                     style: TextStyle(
-                      color: Colors.grey.shade600,
+                      color: Colors.white70, // WHITE70
                       fontSize: width * 0.028,
                     )),
               ],
@@ -340,7 +394,7 @@ class _CreateTripScreenState extends State<CreateTripScreen> {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: width * 0.035,
-                color: date != null ? Colors.grey.shade800 : Colors.grey.shade400,
+                color: date != null ? Colors.white : Colors.white70, // WHITE/WHITE70
               ),
             ),
           ],

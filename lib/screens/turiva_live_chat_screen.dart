@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -142,49 +143,340 @@ class _TurivaLiveChatScreenState extends State<TurivaLiveChatScreen> {
     final height = MediaQuery.of(context).size.height;
 
     if (_user == null) {
-      return const Scaffold(body: Center(child: Text('Please login')));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.lock_outline, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              const Text("Please login to access chat"),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Back"),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        title: Row(
+        body: Stack(
           children: [
-            CircleAvatar(
-              radius: width * 0.045,
-              backgroundColor: Colors.white,
-              backgroundImage: widget.otherUserPhoto.isNotEmpty
-                  ? NetworkImage(widget.otherUserPhoto)
-                  : null,
-              child: widget.otherUserPhoto.isEmpty
-                  ? Icon(
-                widget.isAdmin ? Icons.person : Icons.admin_panel_settings,
-                color: AppColors.primary,
-                size: width * 0.05,
-              )
-                  : null,
+            // 1. Background Image
+            Container(
+              height: double.infinity,
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
-            SizedBox(width: width * 0.03),
-            Expanded(
+            // 2. Dark Overlay
+            Container(
+              color: Colors.black.withOpacity(0.6),
+            ),
+            // 3. Main Content
+            SafeArea(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.otherUserName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  // --- CUSTOM TOP HEADER (GLASS) ---
+                  ClipRRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: width * 0.03,
+                          vertical: height * 0.01,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          border: Border(
+                            bottom: BorderSide(
+                                color: Colors.white.withOpacity(0.2)),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back_ios,
+                                  color: Colors.white),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                            CircleAvatar(
+                              radius: width * 0.045,
+                              backgroundColor: Colors.white.withOpacity(0.2),
+                              backgroundImage: widget.otherUserPhoto.isNotEmpty
+                                  ? NetworkImage(widget.otherUserPhoto)
+                                  : null,
+                              child: widget.otherUserPhoto.isEmpty
+                                  ? Icon(
+                                widget.isAdmin
+                                    ? Icons.person
+                                    : Icons.admin_panel_settings,
+                                color: Colors.white,
+                                size: width * 0.05,
+                              )
+                                  : null,
+                            ),
+                            SizedBox(width: width * 0.03),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.otherUserName,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Text(
+                                    _isOtherTyping ? 'typing...' : 'Online',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: _isOtherTyping
+                                          ? Colors.amber.shade200
+                                          : Colors.green.shade300,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                _showSearch ? Icons.close : Icons.search,
+                                color: Colors.white,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _showSearch = !_showSearch),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  Text(
-                    _isOtherTyping ? 'typing...' : 'Online',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: _isOtherTyping
-                          ? Colors.amber.shade200
-                          : Colors.green.shade300,
+
+                  // --- SEARCH BAR (GLASS) ---
+                  if (_showSearch)
+                    ClipRRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          padding: EdgeInsets.all(width * 0.03),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            border: Border(
+                              bottom: BorderSide(
+                                  color: Colors.white.withOpacity(0.2)),
+                            ),
+                          ),
+                          child: TextField(
+                            controller: _searchController,
+                            style: const TextStyle(color: Colors.white),
+                            onChanged: (_) => setState(() {}),
+                            decoration: InputDecoration(
+                              hintText: 'Search messages...',
+                              hintStyle:
+                              TextStyle(color: Colors.white.withOpacity(0.6)),
+                              prefixIcon: const Icon(Icons.search,
+                                  color: Colors.white70),
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.15),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.3)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                    color: Colors.white.withOpacity(0.3)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                    color: AppColors.accentGold, width: 2),
+                              ),
+                              contentPadding:
+                              EdgeInsets.symmetric(vertical: height * 0.01),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // --- MESSAGES ---
+                  Expanded(
+                    child: StreamBuilder<List<TurivaMessage>>(
+                      stream: _service.getMessages(widget.chatId),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator(color: Colors.white));
+                        }
+
+                        var messages = snapshot.data ?? [];
+
+                        // Filter by search
+                        if (_showSearch && _searchController.text.isNotEmpty) {
+                          messages = messages
+                              .where((m) => m.message
+                              .toLowerCase()
+                              .contains(_searchController.text.toLowerCase()))
+                              .toList();
+                        }
+
+                        if (messages.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.chat_bubble_outline,
+                                    size: width * 0.15, color: Colors.white70),
+                                SizedBox(height: height * 0.02),
+                                Text(
+                                  'Start the conversation!',
+                                  style: TextStyle(
+                                    fontSize: width * 0.045,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (_scrollController.hasClients) {
+                            _scrollController.jumpTo(
+                                _scrollController.position.maxScrollExtent);
+                          }
+                        });
+
+                        return ListView.builder(
+                          controller: _scrollController,
+                          padding: EdgeInsets.symmetric(vertical: height * 0.01),
+                          itemCount: messages.length + (_isOtherTyping ? 1 : 0),
+                          itemBuilder: (context, i) {
+                            if (i == messages.length && _isOtherTyping) {
+                              return const TurivaTypingIndicator();
+                            }
+                            return TurivaChatBubble(
+                              message: messages[i],
+                              currentUserId: _user!.uid,
+                              onDelete: () => _service.deleteMessage(
+                                  widget.chatId, messages[i].id),
+                              onStar: () => _service.starMessage(widget.chatId,
+                                  messages[i].id, !messages[i].isStarred),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+
+                  // --- INPUT AREA (GLASS) ---
+                  ClipRRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: width * 0.03,
+                          vertical: height * 0.012,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          border: Border(
+                            top: BorderSide(color: Colors.white.withOpacity(0.2)),
+                          ),
+                        ),
+                        child: SafeArea(
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: _isUploading ? null : _pickAndSendImage,
+                                child: Container(
+                                  padding: EdgeInsets.all(width * 0.025),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.white.withOpacity(0.3)),
+                                  ),
+                                  child: _isUploading
+                                      ? SizedBox(
+                                    width: width * 0.05,
+                                    height: width * 0.05,
+                                    child: const CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
+                                  )
+                                      : Icon(Icons.image,
+                                      color: Colors.white,
+                                      size: width * 0.055),
+                                ),
+                              ),
+                              SizedBox(width: width * 0.02),
+                              Expanded(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                        color: Colors.white.withOpacity(0.3)),
+                                  ),
+                                  child: TextField(
+                                    controller: _messageController,
+                                    style: const TextStyle(color: Colors.white),
+                                    onChanged: (v) {
+                                      _service.setTyping(
+                                          widget.chatId, !widget.isAdmin, v.isNotEmpty);
+                                    },
+                                    textInputAction: TextInputAction.send,
+                                    onSubmitted: (_) => _sendMessage(),
+                                    decoration: InputDecoration(
+                                      hintText: 'Type a message...',
+                                      hintStyle: TextStyle(
+                                          color: Colors.white.withOpacity(0.6)),
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.symmetric(
+                                        horizontal: width * 0.04,
+                                        vertical: height * 0.015,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: width * 0.02),
+                              GestureDetector(
+                                onTap: _sendMessage,
+                                child: Container(
+                                  padding: EdgeInsets.all(width * 0.03),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accentGold,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                        AppColors.accentGold.withOpacity(0.4),
+                                        blurRadius: 12,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Icon(Icons.send,
+                                      color: Colors.black, size: width * 0.055),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -192,188 +484,6 @@ class _TurivaLiveChatScreenState extends State<TurivaLiveChatScreen> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(_showSearch ? Icons.close : Icons.search),
-            onPressed: () => setState(() => _showSearch = !_showSearch),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search bar
-          if (_showSearch)
-            Container(
-              padding: EdgeInsets.all(width * 0.03),
-              color: Colors.white,
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Search messages...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding:
-                  EdgeInsets.symmetric(vertical: height * 0.01),
-                ),
-              ),
-            ),
-
-          // Messages
-          Expanded(
-            child: StreamBuilder<List<TurivaMessage>>(
-              stream: _service.getMessages(widget.chatId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                var messages = snapshot.data ?? [];
-
-                // Filter by search
-                if (_showSearch && _searchController.text.isNotEmpty) {
-                  messages = messages
-                      .where((m) => m.message
-                      .toLowerCase()
-                      .contains(_searchController.text.toLowerCase()))
-                      .toList();
-                }
-
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline,
-                            size: width * 0.15,
-                            color: Colors.grey.shade300),
-                        SizedBox(height: height * 0.02),
-                        Text(
-                          'Start the conversation!',
-                          style: TextStyle(
-                            fontSize: width * 0.045,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scrollController.hasClients) {
-                    _scrollController.jumpTo(
-                        _scrollController.position.maxScrollExtent);
-                  }
-                });
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: EdgeInsets.symmetric(vertical: height * 0.01),
-                  itemCount: messages.length + (_isOtherTyping ? 1 : 0),
-                  itemBuilder: (context, i) {
-                    if (i == messages.length && _isOtherTyping) {
-                      return const TurivaTypingIndicator();
-                    }
-                    return TurivaChatBubble(
-                      message: messages[i],
-                      currentUserId: _user!.uid,
-                      onDelete: () => _service.deleteMessage(
-                          widget.chatId, messages[i].id),
-                      onStar: () => _service.starMessage(
-                          widget.chatId, messages[i].id, !messages[i].isStarred),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-
-          // Input
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: width * 0.03,
-              vertical: height * 0.012,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -3),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: _isUploading ? null : _pickAndSendImage,
-                    child: Container(
-                      padding: EdgeInsets.all(width * 0.025),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: _isUploading
-                          ? SizedBox(
-                        width: width * 0.05,
-                        height: width * 0.05,
-                        child:
-                        const CircularProgressIndicator(strokeWidth: 2),
-                      )
-                          : Icon(Icons.image,
-                          color: AppColors.primary, size: width * 0.055),
-                    ),
-                  ),
-                  SizedBox(width: width * 0.02),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: TextField(
-                        controller: _messageController,
-                        onChanged: (v) {
-                          _service.setTyping(
-                              widget.chatId, !widget.isAdmin, v.isNotEmpty);
-                        },
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _sendMessage(),
-                        decoration: InputDecoration(
-                          hintText: 'Type a message...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: width * 0.04,
-                            vertical: height * 0.015,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: width * 0.02),
-                  GestureDetector(
-                    onTap: _sendMessage,
-                    child: Container(
-                      padding: EdgeInsets.all(width * 0.03),
-                      decoration: const BoxDecoration(
-                        gradient: AppColors.mainGradient,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(Icons.send,
-                          color: Colors.white, size: width * 0.055),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+      );
   }
 }

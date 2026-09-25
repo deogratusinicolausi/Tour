@@ -38,7 +38,7 @@ class _HoverTourCardState extends State<HoverTourCard> {
             boxShadow: _isHovered
                 ? [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
+                color: AppColors.accentGold.withOpacity(0.4),
                 blurRadius: 25,
                 offset: const Offset(0, 10),
               ),
@@ -77,12 +77,14 @@ class TourGridCard extends StatelessWidget {
     return HoverTourCard(
       onTap: onTap,
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withOpacity(0.15),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -97,12 +99,12 @@ class TourGridCard extends StatelessWidget {
               const BorderRadius.vertical(top: Radius.circular(18)),
               child: Stack(
                 children: [
-                  _buildImage(firstImage, height * 0.11, width),
+                  _buildImage(firstImage, height * 0.21, width),
 
                   // Tour type badge
                   if ((tour['tourType'] ?? '').isNotEmpty)
                     Positioned(
-                      top: 8,
+                      bottom: 8,
                       left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -127,7 +129,7 @@ class TourGridCard extends StatelessWidget {
                   if (tour['featured'] == true)
                     Positioned(
                       top: 8,
-                      right: 32,
+                      left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 3),
@@ -135,10 +137,25 @@ class TourGridCard extends StatelessWidget {
                           gradient: AppColors.goldGradient,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.star,
-                            size: 10, color: Colors.black),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star, size: 10, color: Colors.black),
+                            SizedBox(width: 3),
+                            Text(
+                              'FEATURED',
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
+
 
                   // Rating
                   if ((tour['rating'] ?? 0) > 0)
@@ -179,13 +196,14 @@ class TourGridCard extends StatelessWidget {
                       onTap: onLike,
                       child: Container(
                         padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
                           shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.4)),
                         ),
                         child: Icon(
                           isLiked ? Icons.favorite : Icons.favorite_border,
-                          color: isLiked ? Colors.red : Colors.grey.shade700,
+                          color: isLiked ? Colors.red : Colors.white,
                           size: 16,
                         ),
                       ),
@@ -196,92 +214,90 @@ class TourGridCard extends StatelessWidget {
             ),
 
             // Info
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(width * 0.025),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      tour['name'] ?? 'Unnamed',
+            Padding(
+              padding: EdgeInsets.all(width * 0.025),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tour['name'] ?? 'Unnamed',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: width * 0.032,
-                        color: Colors.grey.shade900,
+                        color: Colors.white,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                  SizedBox(height: height * 0.005),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.location_on,
+                              size: width * 0.025,
+                              color: Colors.white70),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              tour['destinationName'] ??
+                                  tour['location'] ??
+                                  '',
+                              style: TextStyle(
+                                fontSize: width * 0.022,
+                                color: Colors.white70,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if ((tour['duration'] ?? '').isNotEmpty) ...[
+                        SizedBox(height: height * 0.002),
                         Row(
                           children: [
-                            Icon(Icons.location_on,
+                            Icon(Icons.access_time,
                                 size: width * 0.025,
-                                color: Colors.grey.shade500),
+                              color: Colors.white70),
                             const SizedBox(width: 3),
-                            Expanded(
-                              child: Text(
-                                tour['destinationName'] ??
-                                    tour['location'] ??
-                                    '',
-                                style: TextStyle(
-                                  fontSize: width * 0.022,
-                                  color: Colors.grey.shade500,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                            Text(
+                              tour['duration'],
+                              style: TextStyle(
+                                fontSize: width * 0.022,
+                              color: Colors.white70,
                               ),
                             ),
                           ],
                         ),
-                        if ((tour['duration'] ?? '').isNotEmpty) ...[
-                          SizedBox(height: height * 0.003),
-                          Row(
-                            children: [
-                              Icon(Icons.access_time,
-                                  size: width * 0.025,
-                                  color: Colors.grey.shade500),
-                              const SizedBox(width: 3),
-                              Text(
-                                tour['duration'],
-                                style: TextStyle(
-                                  fontSize: width * 0.022,
-                                  color: Colors.grey.shade500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        SizedBox(height: height * 0.003),
-                        if ((tour['price'] ?? 0) > 0)
-                          Row(
-                            children: [
-                              Text(
-                                '${tour['currency'] ?? 'USD'} ${(tour['price'] as num).toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: width * 0.032,
-                                ),
-                              ),
-                              Text(
-                                '/person',
-                                style: TextStyle(
-                                  color: Colors.grey.shade500,
-                                  fontSize: width * 0.022,
-                                ),
-                              ),
-                            ],
-                          ),
                       ],
-                    ),
-                  ],
-                ),
+                      SizedBox(height: height * 0.003),
+                      if ((tour['price'] ?? 0) > 0)
+                        Row(
+                          children: [
+                            Text(
+                              '${tour['currency'] ?? 'USD'} ${(tour['price'] as num).toStringAsFixed(0)}',
+                              style: TextStyle(
+                                color: AppColors.accentGold,
+                                fontWeight: FontWeight.bold,
+                                fontSize: width * 0.032,
+                              ),
+                            ),
+                            Text(
+                              '/person',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: width * 0.022,
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ],
               ),
-            ),
+            )
           ],
         ),
       ),
@@ -370,7 +386,7 @@ class TourListCard extends StatelessWidget {
                 height: width * 0.32,
                 child: Stack(
                   children: [
-                    _buildImage(firstImage, width * 0.32, width),
+                    _buildImage(firstImage, width * 0.21, width),
                     if (tour['featured'] == true)
                       Positioned(
                         top: 8,
@@ -379,11 +395,25 @@ class TourListCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 3),
                           decoration: BoxDecoration(
-                            color: AppColors.accentGold,
+                            gradient: AppColors.goldGradient,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text('⭐',
-                              style: TextStyle(fontSize: 12)),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.star, size: 10, color: Colors.black),
+                              SizedBox(width: 3),
+                              Text(
+                                'FEATURED',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                   ],

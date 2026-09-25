@@ -70,6 +70,7 @@ class TripService {
 
   // ⭐️ Calculate trip budget
   double calculateTripBudget(TripModel trip) {
+    if (trip.days.isEmpty) return 0.0;
     return trip.days.fold(0.0, (sum, day) => sum + day.dayBudget);
   }
 }

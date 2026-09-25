@@ -155,8 +155,26 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final height = MediaQuery.of(context).size.height;
 
     if (_user == null) {
-      return const Scaffold(
-        body: Center(child: Text('Please login')),
+      return Scaffold(
+        body: Stack(
+          children: [
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Container(color: Colors.black.withOpacity(0.6)),
+            const Center(
+              child: Text(
+                'Please login',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
       );
     }
 

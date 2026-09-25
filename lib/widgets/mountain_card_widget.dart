@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/colors.dart';
+import 'dart:ui';
 
 // ⭐️ Hover Wrapper
 class HoverMountainCard extends StatefulWidget {
@@ -90,24 +91,27 @@ class MountainGridCard extends StatelessWidget {
     return HoverMountainCard(
       onTap: onTap,
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            ClipRRect(
-              borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(18)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(18),
+                    bottom: Radius.circular(4),
+                  ),
               child: Stack(
                 children: [
                   _buildImage(mountain['imageUrl'], height * 0.11, width),
@@ -257,7 +261,7 @@ class MountainGridCard extends StatelessWidget {
                       mountain['name'] ?? 'Unnamed',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: width * 0.032,
+                        fontSize: width * 0.035,
                         color: Colors.grey.shade900,
                       ),
                       maxLines: 2,
@@ -313,9 +317,13 @@ class MountainGridCard extends StatelessWidget {
                 ),
               ),
             ),
-          ],
+              ],
+            ),
+
+
         ),
       ),
+      )
     );
   }
 

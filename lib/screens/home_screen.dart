@@ -13,6 +13,7 @@ import 'hotels_list_screen.dart';
 import 'profile_screen.dart';
 import 'explore_all_screen.dart';
 import 'destination_details_screen.dart';
+import 'all_featured_destinations_screen.dart';
 import 'tours_list_screen.dart';
 import 'beaches_list_screen.dart';
 import 'mountains_list_screen.dart';
@@ -22,6 +23,7 @@ import 'deals_list_screen.dart';
 import 'notifications_screen.dart';
 import 'coupons_screen.dart';
 import 'search_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onProfileTap;
@@ -58,16 +60,15 @@ class _HomeScreenState extends State<HomeScreen> {
             width: double.infinity,
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                image: NetworkImage(
+                    'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
                 fit: BoxFit.cover,
               ),
             ),
-          ),
-          // 2. Dark Overlay
+          ), // 2. Dark Overlay
           Container(
             color: Colors.black.withOpacity(0.4),
-          ),
-          // 3. Content
+          ), // 3. Content
           SafeArea(
             bottom: false,
             child: SingleChildScrollView(
@@ -103,7 +104,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
   // ---- BUILD METHODS ----
 
   void _logout() async {
@@ -130,7 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Center(
               child: CircularProgressIndicator(
                 value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    ? loadingProgress.cumulativeBytesLoaded /
+                        loadingProgress.expectedTotalBytes!
                     : null,
               ),
             ),
@@ -197,7 +198,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => const NotificationsScreen(),
+                                      builder: (_) =>
+                                          const NotificationsScreen(),
                                     ),
                                   );
                                 },
@@ -275,7 +277,8 @@ class _HomeScreenState extends State<HomeScreen> {
           SizedBox(height: height * 0.01),
           // The Subtitle Glass Pill
           Container(
-            padding: EdgeInsets.symmetric(horizontal: width * 0.04, vertical: height * 0.008),
+            padding: EdgeInsets.symmetric(
+                horizontal: width * 0.04, vertical: height * 0.008),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
               borderRadius: BorderRadius.circular(20),
@@ -315,7 +318,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 hintStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
                 prefixIcon: const Icon(Icons.search, color: Colors.white),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: height * 0.02, horizontal: 20),
+                contentPadding: EdgeInsets.symmetric(
+                    vertical: height * 0.02, horizontal: 20),
               ),
               onTap: () {
                 Navigator.push(
@@ -363,7 +367,6 @@ class _HomeScreenState extends State<HomeScreen> {
         'gradient': [const Color(0xFFff9a9e), const Color(0xFFfecfef)],
       },
     ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -383,10 +386,26 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ExploreAllScreen(categoryFilter: '',)),
+                  MaterialPageRoute(
+                      builder: (_) => const ExploreAllScreen(
+                            categoryFilter: '',
+                          )),
                 );
               },
-              child: const Text('See All', style: TextStyle(color: Colors.white70)),
+              child: Row(
+                children: [
+                  Text(
+                    'See all',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  SizedBox(width: width * 0.01),
+                  Icon(Icons.arrow_forward,
+                      color: Colors.white.withOpacity(0.9), size: width * 0.04),
+                ],
+              ),
             ),
           ],
         ),
@@ -448,36 +467,43 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              '🔥 Featured Destinations',
-              style: TextStyle(
-                fontSize: width * 0.045,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text(
+            '🔥 Featured Destinations',
+            style: TextStyle(
+              fontSize: width * 0.045,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            // TextButton(
-            //   onPressed: () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(
-            //         builder: (_) => const CategoryScreen(
-            //           categoryName: 'Destinations',
-            //           icon: '📍',
-            //         ),
-            //       ),
-            //     );
-            //   },
-            //   child: Text(
-            //     'See All',
-            //     style: TextStyle(color: AppColors.primary),
-            //   ),
-            // ),
-          ],
-        ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AllFeaturedDestinationsScreen(),
+                ),
+              );
+            },
+            child: Row(
+              children: [
+                Text(
+                  'See all',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(width: width * 0.01),
+                Icon(
+                  Icons.arrow_forward,
+                  color: Colors.white.withOpacity(0.9),
+                  size: width * 0.04,
+                ),
+              ],
+            ),
+          ),
+        ]),
         SizedBox(height: width * 0.02),
         SizedBox(
           height: width * 0.5,
@@ -545,35 +571,34 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(16),
               child: (dest['imageUrl'] ?? '').toString().isNotEmpty
                   ? Image.network(
-                dest['imageUrl'],
-                width: width * 0.6,
-                height: width * 0.5,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    width: width * 0.6,
-                    height: width * 0.5,
-                    color: Colors.grey.shade200,
-                    child: const Center(
-                        child: CircularProgressIndicator()),
-                  );
-                },
-                errorBuilder: (_, __, ___) => Container(
-                  width: width * 0.6,
-                  height: width * 0.5,
-                  color: Colors.grey.shade200,
-                  child: const Icon(Icons.broken_image, size: 40),
-                ),
-              )
+                      dest['imageUrl'],
+                      width: width * 0.6,
+                      height: width * 0.5,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          width: width * 0.6,
+                          height: width * 0.5,
+                          color: Colors.grey.shade200,
+                          child:
+                              const Center(child: CircularProgressIndicator()),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        width: width * 0.6,
+                        height: width * 0.5,
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.broken_image, size: 40),
+                      ),
+                    )
                   : Container(
-                width: width * 0.6,
-                height: width * 0.5,
-                color: Colors.grey.shade300,
-                child: const Icon(Icons.image, size: 40),
-              ),
+                      width: width * 0.6,
+                      height: width * 0.5,
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.image, size: 40),
+                    ),
             ),
-
             // Gradient
             Positioned.fill(
               child: Container(
@@ -590,14 +615,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-
             // Featured Badge
             Positioned(
               top: 10,
               left: 10,
               child: Container(
                 padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: AppColors.accentGold,
                   borderRadius: BorderRadius.circular(20),
@@ -618,7 +642,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-
             // Info
             Positioned(
               bottom: 0,
@@ -838,7 +861,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-
                     // Price
                     if (deal['salePrice'] != null)
                       Text(
@@ -877,6 +899,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
+
   Widget _buildRecommendations(double width, double height) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -959,7 +982,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
-
                       // Price
                       Container(
                         padding: EdgeInsets.symmetric(
@@ -988,7 +1010,8 @@ class _HomeScreenState extends State<HomeScreen> {
         SizedBox(height: height * 0.025),
       ],
     );
-  }}
+  }
+}
 
 class _CategoryCard extends StatefulWidget {
   final Map<String, dynamic> category;
@@ -1018,7 +1041,7 @@ class _CategoryCardState extends State<_CategoryCard> {
           margin: EdgeInsets.only(right: width * 0.03),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: Colors.white.withOpacity(0.3),
               width: 1.5,

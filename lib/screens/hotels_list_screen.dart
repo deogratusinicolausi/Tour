@@ -437,13 +437,13 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                           builder: (context, snapshot) {
                             if (snapshot.connectionState == ConnectionState.waiting) {
                               return GridView.builder(
-                                padding: EdgeInsets.all(width * 0.04),
+                                padding: EdgeInsets.only(left: width * 0.04, right: width * 0.04, top: width * 0.04, bottom: 80),
                                 gridDelegate:
                                 SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 2,
                                   crossAxisSpacing: width * 0.03,
                                   mainAxisSpacing: width * 0.03,
-                                  childAspectRatio: 0.85,
+                                  childAspectRatio: 0.68,
                                 ),
                                 itemCount: 4,
                                 itemBuilder: (_, __) => const ShimmerCard(),
@@ -477,13 +477,13 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                                 Expanded(
                                   child: _isGridView
                                       ? GridView.builder(
-                                    padding: EdgeInsets.all(width * 0.04),
+                                    padding: EdgeInsets.only(left: width * 0.04, right: width * 0.04, top: width * 0.04, bottom: width * 0.04),
                                     gridDelegate:
                                     SliverGridDelegateWithFixedCrossAxisCount(
                                       crossAxisCount: 2,
                                       crossAxisSpacing: width * 0.03,
                                       mainAxisSpacing: width * 0.03,
-                                      childAspectRatio: 0.85,
+                                      childAspectRatio: 0.68,
                                     ),
                                     itemCount: hotels.length,
                                     itemBuilder: (context, i) => HotelGridCard(

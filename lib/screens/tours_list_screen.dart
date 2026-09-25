@@ -452,7 +452,7 @@ class _ToursListScreenState extends State<ToursListScreen> {
                                       crossAxisCount: 2,
                                       crossAxisSpacing: width * 0.03,
                                       mainAxisSpacing: width * 0.03,
-                                      childAspectRatio: 0.75,
+                                      childAspectRatio: 0.65,
                                     ),
                                     itemCount: tours.length,
                                     itemBuilder: (context, i) => TourGridCard(

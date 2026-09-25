@@ -169,9 +169,28 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
     _getDifficultyColor(widget.mountain['difficulty'] ?? 'Moderate');
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Background Image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(
+                    'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // Dark Overlay
+          Container(
+            color: Colors.black.withOpacity(0.6),
+          ),
+          // Content
+          CustomScrollView(
+            slivers: [
           // IMAGE HEADER
           SliverAppBar(
             expandedHeight: height * 0.4,
@@ -528,7 +547,7 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                                 child: Text(
                                   '${e.key + 1}',
                                   style: const TextStyle(
-                                    color: Colors.black, // BLACK on gold
+                                    color: Colors.white, // BLACK on gold
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -743,7 +762,23 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                   ),
                   SizedBox(height: height * 0.025),
 
-                  SizedBox(height: height * 0.03),
+                  if ((widget.mountain['imageUrl'] ?? '').toString().isNotEmpty) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.network(
+                        widget.mountain['imageUrl'],
+                        height: height * 0.18,
+                        width: width,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: height * 0.18,
+                          color: Colors.white.withOpacity(0.1),
+                          child: const Icon(Icons.broken_image, color: Colors.white70),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: height * 0.03),
+                  ],
 
                   // ACTION BUTTONS
                   Row(
@@ -878,6 +913,8 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
           ),
         ],
       ),
+      ]
+      )
     );
   }
 

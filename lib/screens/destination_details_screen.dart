@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:chewie/chewie.dart';
+import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/wishlist_service.dart';
 import '../services/firestore_service.dart';
@@ -209,6 +211,21 @@ class _DestinationDetailsScreenState extends State<DestinationDetailsScreen> {
       }
     }
     return images;
+  }
+
+  List<String> get _allVideos {
+    final videos = widget.destination['videos'] as List?;
+    if (videos == null) return [];
+    return videos.map((e) => e.toString()).toList();
+  }
+
+  Future<void> _playVideo(String url) async {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _VideoPlayerScreen(videoUrl: url),
+      ),
+    );
   }
 
   @override
@@ -588,6 +605,73 @@ class _DestinationDetailsScreenState extends State<DestinationDetailsScreen> {
                     SizedBox(height: height * 0.025),
                   ],
 
+                  // ⭐️ VIDEOS SECTION
+                  if (_allVideos.isNotEmpty) ...[
+                    _sectionTitle('🎥 Videos', width),
+                    SizedBox(height: height * 0.01),
+                    SizedBox(
+                      height: height * 0.22,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _allVideos.length,
+                        itemBuilder: (context, i) {
+                          return GestureDetector(
+                            onTap: () => _playVideo(_allVideos[i]),
+                            child: Container(
+                              width: width * 0.7,
+                              margin: EdgeInsets.only(right: width * 0.03),
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
+                                      color: Colors.black87,
+                                      child: Center(
+                                        child: Icon(Icons.play_circle_fill,
+                                            color: Colors.white.withOpacity(0.9),
+                                            size: width * 0.15),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 10,
+                                    left: 10,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.6),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Text(
+                                        '▶ Tap to play',
+                                        style: TextStyle(
+                                            color: Colors.white, fontSize: 11),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(height: height * 0.025),
+                  ],
+
+                  // ⭐️ VIDEO SECTION
+                  if ((widget.destination['videoUrl'] ?? '').toString().isNotEmpty) ...[
+                    _sectionTitle('🎬 Video', width),
+                    SizedBox(height: height * 0.01),
+                    _buildVideoPlayer(widget.destination['videoUrl']),
+                    SizedBox(height: height * 0.025),
+                  ],
+
                   // MAP
                   _sectionTitle('📍 Location', width),
                   SizedBox(height: height * 0.01),
@@ -928,6 +1012,27 @@ class _DestinationDetailsScreenState extends State<DestinationDetailsScreen> {
     );
   }
 
+  Widget _buildVideoPlayer(String videoUrl) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: _VideoWidget(videoUrl: videoUrl),
+        ),
+      ),
+    );
+  }
+
   Widget _reviewCard(
       String name, String comment, double rating, String time, double width) {
     return Container(
@@ -1007,6 +1112,147 @@ class _DestinationDetailsScreenState extends State<DestinationDetailsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _VideoWidget extends StatefulWidget {
+  final String videoUrl;
+  const _VideoWidget({required this.videoUrl});
+
+  @override
+  State<_VideoWidget> createState() => _VideoWidgetState();
+}
+
+class _VideoWidgetState extends State<_VideoWidget> {
+  late VideoPlayerController _videoController;
+  ChewieController? _chewieController;
+
+  @override
+  void initState() {
+    super.initState();
+    _videoController = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+      ..initialize().then((_) {
+        _chewieController = ChewieController(
+          videoPlayerController: _videoController,
+          autoPlay: false,
+          looping: false,
+          showControls: true,
+          materialProgressColors: ChewieProgressColors(
+            playedColor: AppColors.primary,
+            handleColor: AppColors.accentGold,
+            backgroundColor: Colors.grey,
+            bufferedColor: Colors.white70,
+          ),
+        );
+        if (mounted) {
+          setState(() {});
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _videoController.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_chewieController != null &&
+        _chewieController!.videoPlayerController.value.isInitialized) {
+      return Chewie(controller: _chewieController!);
+    } else {
+      return Container(
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+  }
+}
+
+class _VideoPlayerScreen extends StatefulWidget {
+  final String videoUrl;
+
+  const _VideoPlayerScreen({required this.videoUrl});
+
+  @override
+  State<_VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+}
+
+class _VideoPlayerScreenState extends State<_VideoPlayerScreen> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.networkUrl(
+      Uri.parse(widget.videoUrl),
+    )..initialize().then((_) {
+        setState(() => _isInitialized = true);
+        _controller.play();
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('🎥 Video'),
+      ),
+      body: Center(
+        child: _isInitialized
+            ? AspectRatio(
+                aspectRatio: _controller.value.aspectRatio,
+                child: Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    VideoPlayer(_controller),
+                    VideoProgressIndicator(
+                      _controller,
+                      allowScrubbing: true,
+                      colors: const VideoProgressColors(
+                        playedColor: Color(0xFFF5A623),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _controller.value.isPlaying
+                            ? Icons.pause_circle
+                            : Icons.play_circle,
+                        color: Colors.white,
+                        size: 60,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _controller.value.isPlaying
+                              ? _controller.pause()
+                              : _controller.play();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              )
+            : const CircularProgressIndicator(
+                color: Color(0xFFF5A623),
+              ),
       ),
     );
   }

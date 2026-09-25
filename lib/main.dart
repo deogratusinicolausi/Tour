@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:turiva/widgets/air_control_host.dart';
 import 'utils/colors.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/main_screen.dart';
+import 'screens/hand_control_screen.dart';
 import 'services/notification_service.dart';
+import 'widgets/air_cursor.dart';
+import 'widgets/air_control_host.dart';
+import 'services/air_control_engine.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +38,7 @@ void main() async {
   });
 
   runApp(const TurivaApp());
+
 }
 
 class TurivaApp extends StatelessWidget {
@@ -68,10 +74,23 @@ class TurivaApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const SplashScreen(),
+
+
+      builder: (context, child) {
+        return AirControlHost(
+          child: Stack(
+            children: [
+              child ?? const SizedBox.shrink(),
+              const AirCursor(),
+            ],
+          ),
+        );
+      },
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const MainScreen(),
+        '/hand-control': (context) => const HandControlScreen(),
       },
     );
   }

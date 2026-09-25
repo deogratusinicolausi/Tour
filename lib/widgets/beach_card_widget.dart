@@ -38,7 +38,7 @@ class _HoverBeachCardState extends State<HoverBeachCard> {
             boxShadow: _isHovered
                 ? [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15),
+                color: AppColors.accentGold.withOpacity(0.4),
                 blurRadius: 25,
                 offset: const Offset(0, 10),
               ),
@@ -76,11 +76,12 @@ class BeachGridCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withOpacity(0.15),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -95,7 +96,7 @@ class BeachGridCard extends StatelessWidget {
               const BorderRadius.vertical(top: Radius.circular(18)),
               child: Stack(
                 children: [
-                  _buildImage(beach['imageUrl'], height * 0.11, width),
+                  _buildImage(beach['imageUrl'], height * 0.18, width),
 
                   // Water type badge
                   if ((beach['waterType'] ?? '').isNotEmpty)
@@ -112,7 +113,7 @@ class BeachGridCard extends StatelessWidget {
                         child: Text(
                           '🌊 ${beach['waterType']}'.toUpperCase(),
                           style: const TextStyle(
-                            fontSize: 8,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -159,7 +160,7 @@ class BeachGridCard extends StatelessWidget {
                               (beach['rating'] as num).toStringAsFixed(1),
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -176,15 +177,16 @@ class BeachGridCard extends StatelessWidget {
                       onTap: onLike,
                       child: Container(
                         padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
                           shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white.withOpacity(0.4)),
                         ),
                         child: Icon(
                           isLiked ? Icons.favorite : Icons.favorite_border,
                           color: isLiked
                               ? Colors.red
-                              : Colors.grey.shade700,
+                              : Colors.white,
                           size: 16,
                         ),
                       ),
@@ -197,7 +199,8 @@ class BeachGridCard extends StatelessWidget {
             // Info
             Expanded(
               child: Padding(
-                padding: EdgeInsets.all(width * 0.025),
+                padding: EdgeInsets.symmetric(
+                    horizontal: width * 0.025, vertical: width * 0.015),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -206,55 +209,57 @@ class BeachGridCard extends StatelessWidget {
                       beach['name'] ?? 'Unnamed',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: width * 0.032,
-                        color: Colors.grey.shade900,
+                        fontSize: width * 0.045,
+                        color: Colors.white,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.location_on,
-                                size: width * 0.025,
-                                color: Colors.grey.shade500),
-                            const SizedBox(width: 3),
-                            Expanded(
-                              child: Text(
-                                beach['location'] ??
-                                    beach['country'] ??
-                                    '',
-                                style: TextStyle(
-                                  fontSize: width * 0.022,
-                                  color: Colors.grey.shade500,
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.location_on,
+                                  size: width * 0.035,
+                                  color: Colors.white70),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  beach['location'] ??
+                                      beach['country'] ??
+                                      '',
+                                  style: TextStyle(
+                                    fontSize: width * 0.032,
+                                    color: Colors.white70,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
+                            ],
+                          ),
+                          if ((beach['activities'] as List?)
+                              ?.isNotEmpty ??
+                              false) ...[
+                            Text(
+                              (beach['activities'] as List)
+                                  .take(2)
+                                  .join(' • '),
+                              style: TextStyle(
+                                fontSize: width * 0.03,
+                                color: Colors.blue.shade600,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
-                        ),
-                        if ((beach['activities'] as List?)
-                            ?.isNotEmpty ??
-                            false) ...[
-                          SizedBox(height: height * 0.003),
-                          Text(
-                            (beach['activities'] as List)
-                                .take(2)
-                                .join(' • '),
-                            style: TextStyle(
-                              fontSize: width * 0.02,
-                              color: Colors.blue.shade600,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
                         ],
-                      ],
                     ),
+                    )
                   ],
                 ),
               ),
@@ -375,7 +380,7 @@ class BeachListCard extends StatelessWidget {
                       beach['name'] ?? 'Unnamed',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: width * 0.04,
+                        fontSize: width * 0.05,
                         color: Colors.grey.shade900,
                       ),
                       maxLines: 1,
@@ -385,14 +390,14 @@ class BeachListCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(Icons.location_on,
-                            size: width * 0.03,
+                            size: width * 0.035,
                             color: Colors.grey.shade500),
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(
                             beach['location'] ?? beach['country'] ?? '',
                             style: TextStyle(
-                              fontSize: width * 0.028,
+                              fontSize: width * 0.035,
                               color: Colors.grey.shade500,
                             ),
                             maxLines: 1,
@@ -406,13 +411,13 @@ class BeachListCard extends StatelessWidget {
                       Row(
                         children: [
                           Icon(Icons.water,
-                              size: width * 0.03,
+                              size: width * 0.035,
                               color: Colors.blue.shade600),
                           const SizedBox(width: 3),
                           Text(
                             beach['waterType'],
                             style: TextStyle(
-                              fontSize: width * 0.028,
+                              fontSize: width * 0.035,
                               color: Colors.blue.shade600,
                               fontWeight: FontWeight.w600,
                             ),
@@ -425,13 +430,13 @@ class BeachListCard extends StatelessWidget {
                       Row(
                         children: [
                           const Icon(Icons.star,
-                              color: AppColors.accentGold, size: 14),
+                              color: AppColors.accentGold, size: 16),
                           const SizedBox(width: 3),
                           Text(
                             (beach['rating'] as num).toStringAsFixed(1),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: width * 0.03,
+                              fontSize: width * 0.038,
                             ),
                           ),
                         ],
