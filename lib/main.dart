@@ -9,6 +9,7 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/hand_control_screen.dart';
+import 'screens/airtrip_explore_screen.dart';
 import 'services/notification_service.dart';
 import 'widgets/air_cursor.dart';
 import 'widgets/air_control_host.dart';
@@ -91,6 +92,7 @@ class TurivaApp extends StatelessWidget {
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const MainScreen(),
         '/hand-control': (context) => const HandControlScreen(),
+        '/airtrip': (context) => const AirTripExploreScreen(),
       },
     );
   }
