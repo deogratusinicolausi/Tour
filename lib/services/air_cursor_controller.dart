@@ -136,13 +136,40 @@ class AirCursorController {
 
     final gesture = _gestureService.detectGesture(hand);
 
+    debugPrint(
+      '🎯 AIR CONTROLLER GESTURE: ${gesture.name}',
+    );
+
+    if (gesture == HandGesture.fist) {
+      debugPrint('🔥 GLOBAL FIST DETECTED BY AIR CONTROLLER');
+    }
+
     currentGesture.value = gesture;
 
     detectedLandmarks.value = hand.landmarks.length;
 
-    // ============================================================
-    // 🤏 PINCH DETECTION
-    // ============================================================
+    // ============================================================ // ✊ FIST / BACK — HIGHEST PRIORITY // ============================================================
+
+    if (gesture == HandGesture.fist) {
+      pinchDetected.value = false;
+
+      if (!backRequested.value) {
+        backRequested.value = true;
+
+        debugPrint(
+          '✊ AIR CURSOR: FIST / BACK REQUESTED',
+        );
+
+        debugPrint(
+          '🔥 BACK REQUEST VALUE: ${backRequested.value}',
+        );
+      }
+
+      _handControlService.updateGesture(gesture);
+      return;
+    }
+
+    // ============================================================ // 🤏 PINCH DETECTION // ============================================================
 
     final isPinching = _gestureService.isPinching(
       hand,
@@ -210,8 +237,7 @@ class AirCursorController {
       }
     }
 
-    // ============================================================ // 🤏 PINCH HAS ABSOLUTE PRIORITY // ============================================================
-
+    // 🤏 PINCH HAS PRIORITY OVER OTHER NORMAL GESTURES
     if (isPinching) {
       return;
     }
@@ -288,17 +314,7 @@ class AirCursorController {
       debugPrint('🖐️ AIR SCROLL FINISHED');
     }
 
-    // ============================================================
-    // ✊ FIST / BACK
-    // ============================================================
-
-    if (gesture == HandGesture.fist && !backRequested.value) {
-      backRequested.value = true;
-
-      debugPrint(
-        '✊ AIR CURSOR: FIST / BACK REQUESTED',
-      );
-    } else if (gesture != HandGesture.fist) {
+    if (backRequested.value) {
       backRequested.value = false;
     }
 

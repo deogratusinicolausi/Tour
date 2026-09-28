@@ -9,6 +9,7 @@ import 'trip_cart_screen.dart';
 import 'search_screen.dart';
 import 'hand_control_screen.dart';
 import '../services/hand_action_service.dart';
+import '../services/air_cursor_controller.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -20,12 +21,17 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   final HandActionService _handActionService = HandActionService.instance;
+  final AirCursorController _airCursorController =
+      AirCursorController.instance;
 
   @override
   void initState() {
     super.initState();
     _handActionService.currentAction.addListener(
       _handleHandAction,
+    );
+    _airCursorController.backRequested.addListener(
+      _handleAirBackRequested,
     );
   }
 
@@ -34,7 +40,26 @@ class _MainScreenState extends State<MainScreen> {
     _handActionService.currentAction.removeListener(
       _handleHandAction,
     );
+    _airCursorController.backRequested.removeListener(
+      _handleAirBackRequested,
+    );
     super.dispose();
+  }
+
+  void _handleAirBackRequested() {
+    if (!_airCursorController.backRequested.value) {
+      return;
+    }
+
+    debugPrint('✊ GLOBAL BACK RECEIVED BY MAIN SCREEN');
+
+    if (_selectedIndex > 0) {
+      _goToPreviousPage();
+    } else if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+
+    _airCursorController.clearBackRequest();
   }
 
   void _handleHandAction() {
@@ -43,6 +68,7 @@ class _MainScreenState extends State<MainScreen> {
     switch (action) {
       case HandAction.back:
         debugPrint('✊ Back action received by MainScreen');
+        _handleBackNavigation();
         break;
 
       case HandAction.next:
@@ -70,6 +96,14 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     _handActionService.reset();
+  }
+
+  void _handleBackNavigation() {
+    if (_selectedIndex > 0) {
+      _goToPreviousPage();
+    } else if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
   }
 
   void _goToNextPage() {

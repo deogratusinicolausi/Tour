@@ -16,7 +16,7 @@ class GestureService {
   HandGesture _stableGesture = HandGesture.none;
   HandGesture _candidateGesture = HandGesture.none;
   int _candidateFrames = 0;
-  static const int _gestureConfirmationFrames = 3;
+  static const int _gestureConfirmationFrames = 2;
 
   static const double _pinchStartThreshold = 0.15;
 static const double _pinchReleaseThreshold = 0.22;
@@ -74,22 +74,20 @@ static const double _pinchReleaseThreshold = 0.22;
 
     HandGesture detectedGesture = HandGesture.none;
 
+    // ✊ FIST
+    // Check fist first so a closed hand always gets priority.
+    if (openFingers == 0) {
+      detectedGesture = HandGesture.fist;
+    }
+
     // 🖐️ OPEN PALM
-    if (openFingers >= 3) {
+    else if (openFingers >= 3) {
       detectedGesture = HandGesture.openPalm;
     }
 
     // ☝️ POINTING
-    else if (indexOpen &&
-        !middleOpen &&
-        !ringOpen &&
-        !pinkyOpen) {
+    else if (indexOpen && !middleOpen && !ringOpen && !pinkyOpen) {
       detectedGesture = HandGesture.pointing;
-    }
-
-    // ✊ FIST
-    else if (openFingers == 0) {
-      detectedGesture = HandGesture.fist;
     }
 
     // ============================================================
@@ -111,7 +109,8 @@ static const double _pinchReleaseThreshold = 0.22;
       if (_stableGesture != _candidateGesture) {
         debugPrint(
           '🧠 STABLE GESTURE: '
-          '${_candidateGesture.name}',
+          '${_candidateGesture.name} '
+          '(frames=$_candidateFrames)',
         );
       }
 
