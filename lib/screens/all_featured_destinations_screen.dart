@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/firestore_service.dart';
 import '../utils/colors.dart';
+import '../widgets/full_screen_image_viewer.dart';
 import 'destination_details_screen.dart';
 
 class AllFeaturedDestinationsScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _AllFeaturedDestinationsScreenState
   // ===== STATE =====
   String _selectedCountry = 'All';
   String _sortBy = 'recent';
+  bool _isGridView = true; // ⭐ NEW — toggle grid/list
 
 // ===== SCROLL =====
   final ScrollController _scrollController = ScrollController();
@@ -156,47 +158,70 @@ class _AllFeaturedDestinationsScreenState
                                   width, height, destinations),
                             ),
 
-                            // ===== GRID =====
+                            // ===== GRID / LIST =====
                             SliverPadding(
                               padding: EdgeInsets.only(
                                 left: width * 0.04,
                                 right: width * 0.04,
                                 top: width * 0.02,
-                                bottom: width * 0.04,
+                                bottom: width * 0.1,
                               ),
-                              sliver: SliverGrid(
-                                gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: width * 0.03,
-                                  mainAxisSpacing: width * 0.03,
-                                  childAspectRatio: 0.68,
-                                ),
-                                delegate: SliverChildBuilderDelegate(
-                                      (context, i) {
-                                    return _StaggeredCard(
-                                      index: i,
-                                      child: _FeaturedCard(
-                                        dest: filtered[i],
-                                        width: width,
-                                        height: height,
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  DestinationDetailsScreen(
-                                                      destination:
-                                                      filtered[i]),
-                                            ),
-                                          );
-                                        },
+                              sliver: _isGridView
+                                  ? SliverGrid(
+                                      gridDelegate:
+                                          SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: width * 0.04,
+                                        mainAxisSpacing: width * 0.03,
+                                        childAspectRatio: 0.84,
                                       ),
-                                    );
-                                  },
-                                  childCount: filtered.length,
-                                ),
-                              ),
+                                      delegate: SliverChildBuilderDelegate(
+                                        (context, i) => _StaggeredCard(
+                                          index: i,
+                                          child: _FeaturedCard(
+                                            dest: filtered[i],
+                                            width: width,
+                                            height: height,
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      DestinationDetailsScreen(
+                                                          destination:
+                                                              filtered[i]),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        childCount: filtered.length,
+                                      ),
+                                    )
+                                  : SliverList(
+                                      delegate: SliverChildBuilderDelegate(
+                                        (context, i) => _StaggeredCard(
+                                          index: i,
+                                          child: _FeaturedListCard(
+                                            dest: filtered[i],
+                                            width: width,
+                                            height: height,
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      DestinationDetailsScreen(
+                                                          destination:
+                                                              filtered[i]),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        childCount: filtered.length,
+                                      ),
+                                    ),
                             ),
                           ],
                         ),
@@ -274,6 +299,28 @@ class _AllFeaturedDestinationsScreenState
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    // ⭐ GRID/LIST TOGGLE BUTTON
+                    GestureDetector(
+                      onTap: () => setState(() => _isGridView = !_isGridView),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: AnimatedRotation(
+                          turns: _isGridView ? 0 : 0.5,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          child: Icon(
+                            _isGridView ? Icons.view_list : Icons.grid_view,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: width * 0.01),
                   ],
                 ),
               ),
@@ -572,6 +619,323 @@ class _AllFeaturedDestinationsScreenState
 }
 
 // ============================================================
+// ===== FEATURED LIST CARD (Horizontal layout) =====
+// ============================================================
+class _FeaturedListCard extends StatelessWidget {
+  final Map<String, dynamic> dest;
+  final double width;
+  final double height;
+  final VoidCallback onTap;
+
+  const _FeaturedListCard({
+    required this.dest,
+    required this.width,
+    required this.height,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = (dest['imageUrl'] ?? '').toString();
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: EdgeInsets.only(bottom: height * 0.012),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.13),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Image
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.horizontal(left: Radius.circular(16)),
+              child: SizedBox(
+                width: width * 0.32,
+                height: width * 0.32,
+                child: imageUrl.isNotEmpty
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Colors.white.withOpacity(0.1),
+                          child: const Icon(Icons.broken_image,
+                              color: Colors.white54),
+                        ),
+                      )
+                    : Container(
+                        color: Colors.white.withOpacity(0.1),
+                        child: const Icon(Icons.image, color: Colors.white54),
+                      ),
+              ),
+            ),
+
+            // Content
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(width * 0.035),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Featured badge
+                    if (dest['featured'] == true)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 6),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.goldGradient,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star, size: 10, color: Colors.black),
+                            SizedBox(width: 3),
+                            Text(
+                              'FEATURED',
+                              style: TextStyle(
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Title
+                    Text(
+                      dest['name'] ?? 'Unnamed',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: width * 0.038,
+                        color: Colors.white,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // Location
+                    Row(
+                      children: [
+                        Icon(Icons.location_on,
+                            size: width * 0.03, color: Colors.white70),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            dest['location'] ?? '',
+                            style: TextStyle(
+                              fontSize: width * 0.028,
+                              color: Colors.white70,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // Rating
+                    Row(
+                      children: [
+                        const Icon(Icons.star,
+                            size: 14, color: AppColors.accentGold),
+                        const SizedBox(width: 4),
+                        Text(
+                          (dest['rating'] ?? 0).toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: width * 0.028,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Arrow
+            Padding(
+              padding: EdgeInsets.only(right: width * 0.03),
+              child: Icon(
+                Icons.arrow_forward_ios,
+                color: AppColors.accentGold,
+                size: width * 0.04,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FullScreenImage extends StatefulWidget {
+  final String imageUrl;
+  const _FullScreenImage({required this.imageUrl});
+
+  @override
+  State<_FullScreenImage> createState() => _FullScreenImageState();
+}
+
+class _FullScreenImageState extends State<_FullScreenImage>
+    with SingleTickerProviderStateMixin {
+  final _transformController = TransformationController();
+  late AnimationController _animController;
+  late Animation<Matrix4> _animation;
+  TapDownDetails? _doubleTapDetails;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    )..addListener(() {
+        _transformController.value = _animation.value;
+      });
+  }
+
+  @override
+  void dispose() {
+    _transformController.dispose();
+    _animController.dispose();
+    super.dispose();
+  }
+
+  void _handleDoubleTap() {
+    final pos = _doubleTapDetails!.localPosition;
+    final zoomed = _transformController.value != Matrix4.identity();
+    if (zoomed) {
+      _animation = Matrix4Tween(
+        begin: _transformController.value,
+        end: Matrix4.identity(),
+      ).animate(
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+      );
+    } else {
+      const zoom = 2.5;
+      final x = -pos.dx * (zoom - 1);
+      final y = -pos.dy * (zoom - 1);
+      _animation = Matrix4Tween(
+        begin: Matrix4.identity(),
+        end: Matrix4.identity()
+          ..translate(x, y)
+          ..scale(zoom),
+      ).animate(
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+      );
+    }
+    _animController.forward(from: 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onDoubleTapDown: (d) => _doubleTapDetails = d,
+              onDoubleTap: _handleDoubleTap,
+              child: InteractiveViewer(
+                transformationController: _transformController,
+                minScale: 1.0,
+                maxScale: 5.0,
+                child: Center(
+                  child: Image.network(
+                    widget.imageUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (_, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(color: Colors.white),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Icon(Icons.broken_image,
+                          color: Colors.white54, size: 64),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Close button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 12,
+            right: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 22),
+              ),
+            ),
+          ),
+
+          // Zoom hint
+          Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 24,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: 0.7,
+                duration: const Duration(milliseconds: 300),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'Pinch to zoom · Double-tap · Drag to pan',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================
 // ===== STAGGERED FADE-IN WRAPPER =====
 // ============================================================
 class _StaggeredCard extends StatefulWidget {
@@ -692,20 +1056,33 @@ class _FeaturedCardState extends State<_FeaturedCard> {
               Stack(
                 children: [
                   SizedBox(
-                    height: height * 0.13,
+                    height: height * 0.18,
                     width: double.infinity,
                     child: imageUrl.isNotEmpty
-                        ? Hero(
-                      tag: 'dest_${dest['id']}',
-                      child: Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _imageFallback(
-                            width, height * 0.13, Icons.broken_image),
+                        ? ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(18),
+                      ),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => FullScreenImageViewer.open(
+                          context,
+                          imageUrl: imageUrl,
+                          heroTag: 'dest_${dest['id']}',
+                        ),
+                        child: Hero(
+                          tag: 'dest_${dest['id']}',
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _imageFallback(
+                                width, height * 0.15, Icons.broken_image),
+                          ),
+                        ),
                       ),
                     )
-                        : _imageFallback(width, height * 0.13,
-                        Icons.image_not_supported),
+                        : _imageFallback(width, height * 0.15,
+                            Icons.image_not_supported),
                   ),
                   Positioned.fill(
                     child: Container(

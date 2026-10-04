@@ -14,11 +14,11 @@ class AirScrollService {
   // 🎯 SMOOTH SCROLL SETTINGS
   // ============================================================
 
-  static const double _deadZone = 3.0;
-  static const double _sensitivity = 1.25;
-  static const double _smoothing = 0.35;
-  static const double _maxScrollSpeed = 45.0;
-  static const double _minimumScrollDelta = 0.5;
+  static const double _deadZone = 4.0;
+  static const double _sensitivity = 1.45;
+  static const double _smoothing = 0.45;
+  static const double _maxScrollSpeed = 55.0;
+  static const double _minimumScrollDelta = 0.7;
 
   Offset? _lastPosition;
 
@@ -45,13 +45,9 @@ class AirScrollService {
     // ==========================================================
 
     if (rawDelta.abs() < _deadZone) {
-      // Slowly bring scrolling back to zero.
-      _smoothedDelta *= 0.75;
-
-      if (_smoothedDelta.abs() < _minimumScrollDelta) {
-        _smoothedDelta = 0.0;
-      }
-
+      // 🛑 Hand is almost still → stop scrolling immediately.
+      _smoothedDelta = 0.0;
+      scrollAmount.value = 0.0;
       return;
     }
 

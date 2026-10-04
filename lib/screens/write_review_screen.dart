@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -94,13 +95,11 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     if (_user == null) return;
     setState(() => _isLoading = true);
 
-    // Check if user has verified booking
     final bookingId = await _reviewService.getVerifiedBooking(
       _user!.uid,
       widget.itemId,
     );
 
-    // Get user name
     final userDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(_user!.uid)
@@ -168,306 +167,480 @@ class _WriteReviewScreenState extends State<WriteReviewScreen> {
     final height = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('⭐ Write Review'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.all(width * 0.05),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Item info
-              Container(
-                padding: EdgeInsets.all(width * 0.04),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Reviewing',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: width * 0.028,
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // ===== BACKGROUND IMAGE =====
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(
+                    'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // ===== DARK OVERLAY =====
+          Container(color: Colors.black.withOpacity(0.75)),
+
+          // ===== CONTENT =====
+          SafeArea(
+            child: Column(
+              children: [
+                // ===== GLASS APP BAR =====
+                _buildGlassAppBar(context, width),
+
+                // ===== FORM =====
+                Expanded(
+                  child: Form(
+                    key: _formKey,
+                    child: ListView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: width * 0.04,
+                        vertical: height * 0.01,
                       ),
-                    ),
-                    SizedBox(height: height * 0.005),
-                    Text(
-                      widget.itemName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: width * 0.042,
-                        color: Colors.grey.shade900,
-                      ),
-                    ),
-                    SizedBox(height: height * 0.005),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        widget.itemType.toUpperCase(),
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              SizedBox(height: height * 0.03),
-
-              // Rating
-              Container(
-                padding: EdgeInsets.all(width * 0.05),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'How was your experience?',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: width * 0.042,
-                        color: Colors.grey.shade900,
-                      ),
-                    ),
-                    SizedBox(height: height * 0.02),
-                    StarPicker(
-                      rating: _rating,
-                      onChanged: (v) => setState(() => _rating = v),
-                    ),
-                    SizedBox(height: height * 0.015),
-                    Text(
-                      _ratingText,
-                      style: TextStyle(
-                        fontSize: width * 0.045,
-                        fontWeight: FontWeight.bold,
-                        color: _rating > 0
-                            ? AppColors.accentGold
-                            : Colors.grey.shade400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              SizedBox(height: height * 0.025),
-
-              // Title
-              Text(
-                '📝 Review Title (Optional)',
-                style: TextStyle(
-                  fontSize: width * 0.04,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-              SizedBox(height: height * 0.01),
-              TextFormField(
-                controller: _titleController,
-                decoration: InputDecoration(
-                  hintText: 'e.g. Amazing experience!',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                    const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                ),
-              ),
-
-              SizedBox(height: height * 0.025),
-
-              // Comment
-              Text(
-                '💬 Your Review',
-                style: TextStyle(
-                  fontSize: width * 0.04,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-              SizedBox(height: height * 0.01),
-              TextFormField(
-                controller: _commentController,
-                maxLines: 6,
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Please write a review';
-                  if (v.length < 10) return 'At least 10 characters';
-                  return null;
-                },
-                decoration: InputDecoration(
-                  hintText:
-                  'Share your experience... What did you like? What could be better?',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide:
-                    const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                ),
-              ),
-
-              SizedBox(height: height * 0.025),
-
-              // Photos
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '📸 Add Photos',
-                    style: TextStyle(
-                      fontSize: width * 0.04,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                  Text(
-                    '${_photos.length}/5',
-                    style: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: width * 0.032,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: height * 0.01),
-              SizedBox(
-                height: height * 0.12,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _photos.length + 1,
-                  itemBuilder: (context, i) {
-                    if (i == _photos.length) {
-                      return GestureDetector(
-                        onTap: _isUploading ? null : _pickImage,
-                        child: Container(
-                          width: height * 0.12,
-                          margin: EdgeInsets.only(right: width * 0.02),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border:
-                            Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: _isUploading
-                              ? const Center(
-                              child: CircularProgressIndicator())
-                              : Icon(Icons.add_photo_alternate,
-                              color: Colors.grey.shade400,
-                              size: width * 0.08),
-                        ),
-                      );
-                    }
-                    return Stack(
+                      physics: const BouncingScrollPhysics(),
                       children: [
-                        Container(
-                          width: height * 0.12,
-                          margin: EdgeInsets.only(right: width * 0.02),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            image: DecorationImage(
-                              image: NetworkImage(_photos[i]),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _photos.removeAt(i)),
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
+                        // ===== ITEM INFO CARD =====
+                        _glassCard(
+                          width: width,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Reviewing',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: width * 0.028,
+                                ),
                               ),
-                              child: const Icon(Icons.close,
-                                  color: Colors.white, size: 14),
+                              SizedBox(height: height * 0.005),
+                              Text(
+                                widget.itemName,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: width * 0.042,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: height * 0.008),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentGold
+                                      .withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppColors.accentGold
+                                        .withOpacity(0.5),
+                                  ),
+                                ),
+                                child: Text(
+                                  widget.itemType.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: AppColors.accentGold,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        SizedBox(height: height * 0.02),
+
+                        // ===== RATING CARD =====
+                        _glassCard(
+                          width: width,
+                          child: Column(
+                            children: [
+                              Text(
+                                'How was your experience?',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: width * 0.042,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(height: height * 0.02),
+                              StarPicker(
+                                rating: _rating,
+                                onChanged: (v) =>
+                                    setState(() => _rating = v),
+                              ),
+                              SizedBox(height: height * 0.015),
+                              Text(
+                                _ratingText,
+                                style: TextStyle(
+                                  fontSize: width * 0.045,
+                                  fontWeight: FontWeight.bold,
+                                  color: _rating > 0
+                                      ? AppColors.accentGold
+                                      : Colors.white54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        SizedBox(height: height * 0.025),
+
+                        // ===== TITLE =====
+                        _labelText('📝 Review Title (Optional)', width),
+                        SizedBox(height: height * 0.01),
+                        _glassTextField(
+                          controller: _titleController,
+                          hint: 'e.g. Amazing experience!',
+                          width: width,
+                          height: height,
+                        ),
+
+                        SizedBox(height: height * 0.025),
+
+                        // ===== COMMENT =====
+                        _labelText('💬 Your Review', width),
+                        SizedBox(height: height * 0.01),
+                        _glassTextField(
+                          controller: _commentController,
+                          hint:
+                          'Share your experience... What did you like? What could be better?',
+                          width: width,
+                          height: height,
+                          maxLines: 6,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Please write a review';
+                            }
+                            if (v.length < 10) {
+                              return 'At least 10 characters';
+                            }
+                            return null;
+                          },
+                        ),
+
+                        SizedBox(height: height * 0.025),
+
+                        // ===== PHOTOS =====
+                        Row(
+                          mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+                          children: [
+                            _labelText('📸 Add Photos', width),
+                            Text(
+                              '${_photos.length}/5',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: width * 0.032,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: height * 0.01),
+                        SizedBox(
+                          height: height * 0.12,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _photos.length + 1,
+                            itemBuilder: (context, i) {
+                              if (i == _photos.length) {
+                                return GestureDetector(
+                                  onTap: _isUploading
+                                      ? null
+                                      : _pickImage,
+                                  child: ClipRRect(
+                                    borderRadius:
+                                    BorderRadius.circular(12),
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(
+                                          sigmaX: 12, sigmaY: 12),
+                                      child: Container(
+                                        width: height * 0.12,
+                                        margin: EdgeInsets.only(
+                                            right: width * 0.02),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white
+                                              .withOpacity(0.15),
+                                          borderRadius:
+                                          BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: Colors.white
+                                                .withOpacity(0.3),
+                                          ),
+                                        ),
+                                        child: _isUploading
+                                            ? const Center(
+                                          child:
+                                          CircularProgressIndicator(
+                                            color: AppColors
+                                                .accentGold,
+                                          ),
+                                        )
+                                            : Icon(
+                                          Icons
+                                              .add_photo_alternate,
+                                          color:
+                                          Colors.white70,
+                                          size: width * 0.08,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return Stack(
+                                children: [
+                                  Container(
+                                    width: height * 0.12,
+                                    margin: EdgeInsets.only(
+                                        right: width * 0.02),
+                                    decoration: BoxDecoration(
+                                      borderRadius:
+                                      BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white
+                                            .withOpacity(0.3),
+                                      ),
+                                      image: DecorationImage(
+                                        image:
+                                        NetworkImage(_photos[i]),
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: GestureDetector(
+                                      onTap: () => setState(
+                                              () => _photos.removeAt(i)),
+                                      child: Container(
+                                        padding:
+                                        const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.close,
+                                            color: Colors.white,
+                                            size: 14),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+
+                        SizedBox(height: height * 0.04),
+
+                        // ===== SUBMIT BUTTON =====
+                        SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accentGold,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 6,
+                              shadowColor: AppColors.accentGold
+                                  .withOpacity(0.6),
+                            ),
+                            child: _isLoading
+                                ? const CircularProgressIndicator(
+                                color: Colors.black)
+                                : const Text(
+                              'SUBMIT REVIEW',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                                letterSpacing: 1,
+                              ),
                             ),
                           ),
                         ),
+
+                        SizedBox(height: height * 0.05),
                       ],
-                    );
-                  },
-                ),
-              ),
-
-              SizedBox(height: height * 0.04),
-
-              // Submit
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                    'SUBMIT REVIEW',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // GLASS APP BAR
+  // ============================================================
+  Widget _buildGlassAppBar(BuildContext context, double width) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: width * 0.03,
+        vertical: width * 0.02,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: width * 0.02,
+              vertical: width * 0.02,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new,
                       color: Colors.white,
-                      letterSpacing: 1,
+                      size: 18,
                     ),
                   ),
                 ),
-              ),
-
-              SizedBox(height: height * 0.05),
-            ],
+                SizedBox(width: width * 0.03),
+                const Expanded(
+                  child: Text(
+                    '⭐ Write Review',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // HELPER: glass card
+  // ============================================================
+  Widget _glassCard({
+    required double width,
+    required Widget child,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          padding: EdgeInsets.all(width * 0.05),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.13),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // HELPER: glass text field
+  // ============================================================
+  Widget _glassTextField({
+    required TextEditingController controller,
+    required String hint,
+    required double width,
+    required double height,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          validator: validator,
+          style: const TextStyle(color: Colors.white),
+          cursorColor: AppColors.accentGold,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.white54),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: Colors.white.withOpacity(0.3),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                  color: AppColors.accentGold, width: 1.5),
+            ),
+            contentPadding: EdgeInsets.all(width * 0.04),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // HELPER: label text
+  // ============================================================
+  Widget _labelText(String text, double width) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: width * 0.04,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
       ),
     );
   }

@@ -2,12 +2,12 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:hand_landmarker/hand_landmarker.dart';
-
 import 'gesture_service.dart';
 import 'hand_control_service.dart';
 import 'hand_cursor_service.dart';
 import 'air_interaction_service.dart';
 import 'air_scroll_service.dart';
+import 'air_zoom_service.dart';
 
 class AirCursorController {
   AirCursorController._internal();
@@ -24,6 +24,8 @@ class AirCursorController {
   final GestureService _gestureService = GestureService();
 
   final AirScrollService _airScrollService = AirScrollService.instance;
+
+  final AirZoomService _airZoomService = AirZoomService.instance;
 
   final ValueNotifier<bool> isRunning = ValueNotifier<bool>(false);
 
@@ -125,6 +127,40 @@ class AirCursorController {
     // ============================================================
 
     detectedHands.value = hands.length;
+
+    // ============================================================ // 👐 TWO-HAND AIR ZOOM // ============================================================
+
+    if (hands.length >= 2 &&
+        _gestureService.detectGesture(hands[0]) == HandGesture.openPalm &&
+        _gestureService.detectGesture(hands[1]) == HandGesture.openPalm) {
+      _airZoomService.update(hands);
+
+      // Two hands = dedicated zoom mode.
+      // Do not allow one-hand gestures to interfere.
+      if (_scrollActive) {
+        _airScrollService.stop();
+        _scrollActive = false;
+        debugPrint('🛑 SCROLL STOPPED FOR TWO-HAND ZOOM');
+      }
+
+      if (_dragActive) {
+        final position = _cursorService.cursorPosition.value;
+
+        if (position != null) {
+          _airInteractionService.endDrag(position);
+        }
+
+        _dragActive = false;
+        _pinchInteractionActive = false;
+        _pinchStartPosition = null;
+
+        debugPrint('🛑 DRAG STOPPED FOR TWO-HAND ZOOM');
+      }
+
+      return;
+    } else {
+      _airZoomService.stop();
+    }
 
     final hand = hands.first;
 

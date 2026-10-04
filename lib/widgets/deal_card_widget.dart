@@ -1,51 +1,773 @@
 import 'package:flutter/material.dart';
+import 'dart:ui'; // Required for ImageFilter
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../screens/deal_details_screen.dart';
+import '../services/firestore_service.dart';
+import '../services/wishlist_service.dart';
 import '../utils/colors.dart';
+import '../widgets/deal_card_widget.dart';
 
-// ⭐️ Hover Wrapper
-class HoverDealCard extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-
-  const HoverDealCard({
-    super.key,
-    required this.child,
-    required this.onTap,
-  });
+class DealsListScreen extends StatefulWidget {
+  const DealsListScreen({super.key});
 
   @override
-  State<HoverDealCard> createState() => _HoverDealCardState();
+  State<DealsListScreen> createState() => _DealsListScreenState();
 }
 
-class _HoverDealCardState extends State<HoverDealCard> {
-  bool _isHovered = false;
+class _DealsListScreenState extends State<DealsListScreen> {
+  final _service = FirestoreService();
+  final _wishlistService = WishlistService();
+  final _user = FirebaseAuth.instance.currentUser;
+  final _searchController = TextEditingController();
+
+  String _searchQuery = '';
+  String _sortBy = 'recent';
+  bool _isGridView = true;
+  bool _showFeaturedOnly = false;
+  bool _showLikesOnly = false;
+  bool _showExpiringSoon = false;
+  String _filterDiscount = 'All';
+
+  final Set<String> _likedDeals = {};
+
+  final List<Map<String, String>> _discountFilters = [
+    {'value': 'All', 'label': '🎁 All'},
+    {'value': '10', 'label': '💰 10%+'},
+    {'value': '25', 'label': '💰 25%+'},
+    {'value': '50', 'label': '💎 50%+'},
+    {'value': '70', 'label': '🔥 70%+'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLiked();
+  }
+
+  Future<void> _loadLiked() async {
+    if (_user == null) return;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('wishlists')
+          .where('userId', isEqualTo: _user!.uid)
+          .where('itemType', isEqualTo: 'deal')
+          .get();
+      setState(() {
+        _likedDeals.addAll(
+            snapshot.docs.map((d) => d.data()['itemId'] as String));
+      });
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> _filterAndSort(
+      List<Map<String, dynamic>> all) {
+    var list = all.where((d) {
+      final search = _searchQuery.toLowerCase();
+      final matchSearch = _searchQuery.isEmpty ||
+          (d['title'] ?? '').toString().toLowerCase().contains(search) ||
+          (d['itemName'] ?? '').toString().toLowerCase().contains(search);
+
+      final matchFeatured = !_showFeaturedOnly || d['featured'] == true;
+      final matchLikes = !_showLikesOnly || _likedDeals.contains(d['id']);
+
+      final endDate = d['endDate'] != null
+          ? (d['endDate'] as dynamic).toDate() as DateTime
+          : null;
+      final matchExpiring = !_showExpiringSoon ||
+          (endDate != null &&
+              endDate.difference(DateTime.now()).inDays <= 3 &&
+              endDate.isAfter(DateTime.now()));
+
+      final discount = (d['discount'] ?? 0) as num;
+      final matchDiscount = _filterDiscount == 'All' ||
+          discount >= int.parse(_filterDiscount);
+
+      return matchSearch &&
+          matchFeatured &&
+          matchLikes &&
+          matchExpiring &&
+          matchDiscount;
+    }).toList();
+
+    switch (_sortBy) {
+      case 'discount':
+        list.sort((a, b) =>
+            ((b['discount'] ?? 0) as num).compareTo((a['discount'] ?? 0) as num));
+        break;
+      case 'price_low':
+        list.sort((a, b) =>
+            ((a['salePrice'] ?? 0) as num)
+                .compareTo((b['salePrice'] ?? 0) as num));
+        break;
+      case 'price_high':
+        list.sort((a, b) =>
+            ((b['salePrice'] ?? 0) as num)
+                .compareTo((a['salePrice'] ?? 0) as num));
+        break;
+    }
+
+    list.sort((a, b) {
+      if (a['featured'] == true && b['featured'] != true) return -1;
+      if (a['featured'] != true && b['featured'] == true) return 1;
+      return 0;
+    });
+
+    return list;
+  }
+
+  Future<void> _toggleLike(Map<String, dynamic> deal) async {
+    if (_user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please login to like'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final wasAdded = await _wishlistService.addToWishlist(
+      userId: _user!.uid,
+      itemId: deal['id'],
+      itemType: 'deal',
+      itemName: deal['title'] ?? '',
+      itemImage: deal['imageUrl'] ?? '',
+      price: (deal['salePrice'] ?? 0).toDouble(),
+      currency: deal['currency'] ?? 'USD',
+    );
+
+    setState(() {
+      if (wasAdded) {
+        _likedDeals.add(deal['id']);
+      } else {
+        _likedDeals.remove(deal['id']);
+      }
+    });
+
+    if (wasAdded) {
+      try {
+        await FirebaseFirestore.instance.collection('activities').add({
+          'type': 'wishlist',
+          'action': 'liked',
+          'title': 'Liked: ${deal['title']}',
+          'description': '${_user!.displayName ?? 'User'} liked this deal',
+          'userId': _user!.uid,
+          'userName': _user!.displayName ?? 'User',
+          'itemId': deal['id'],
+          'itemType': 'deal',
+          'icon': '❤️',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        print('Error: $e');
+      }
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(wasAdded ? '❤️ Liked!' : '💔 Removed'),
+        backgroundColor: wasAdded ? Colors.red : Colors.grey,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          transform: Matrix4.identity()
-            ..scale(_isHovered ? 1.03 : 1.0)
-            ..translate(0.0, _isHovered ? -5.0 : 0.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: _isHovered
-                ? [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 25,
-                offset: const Offset(0, 10),
+    final width = MediaQuery.of(context).size.width;
+    final height = MediaQuery.of(context).size.height;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // ===== BACKGROUND =====
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(
+                    'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
               ),
-            ]
-                : [],
+            ),
           ),
-          child: widget.child,
+          Container(color: Colors.black.withOpacity(0.7)),
+
+          // ===== CONTENT =====
+          SafeArea(
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // ===== APP BAR (scrolls away) =====
+                SliverAppBar(
+                  floating: true,
+                  snap: true,
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  automaticallyImplyLeading: false,
+                  expandedHeight: 70,
+                  toolbarHeight: 70,
+                  flexibleSpace: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: width * 0.03,
+                      vertical: width * 0.02,
+                    ),
+                    child: _buildGlassAppBar(context, width),
+                  ),
+                ),
+
+                // ===== SEARCH + SORT =====
+                SliverToBoxAdapter(
+                  child: _buildGlassSearchBar(width, height),
+                ),
+
+                // ===== QUICK CHIPS =====
+                SliverToBoxAdapter(
+                  child: _buildGlassQuickChips(width, height),
+                ),
+
+                // ===== DISCOUNT FILTER =====
+                SliverToBoxAdapter(
+                  child: _buildGlassDiscountFilter(width, height),
+                ),
+
+                // ===== DEALS CONTENT =====
+                StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _service.getDeals(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 80),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                                color: AppColors.accentGold),
+                          ),
+                        ),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return SliverToBoxAdapter(
+                        child: Center(
+                          child: Text(
+                            'Error: ${snapshot.error}',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final all = snapshot.data ?? [];
+                    final deals = _filterAndSort(all);
+
+                    if (deals.isEmpty) {
+                      return SliverToBoxAdapter(
+                        child: _buildEmptyState(width, height),
+                      );
+                    }
+
+                    return SliverList(
+                      delegate: SliverChildListDelegate([
+                        // Result count
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: width * 0.04,
+                              vertical: height * 0.01),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  '${deals.length} deal${deals.length > 1 ? 's' : ''}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Grid or list
+                        if (_isGridView)
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: width * 0.04),
+                            child: GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: width * 0.03,
+                                mainAxisSpacing: width * 0.03,
+                                childAspectRatio: 0.65,
+                              ),
+                              itemCount: deals.length,
+                              itemBuilder: (context, i) => DealGridCard(
+                                deal: deals[i],
+                                isLiked:
+                                _likedDeals.contains(deals[i]['id']),
+                                onLike: () => _toggleLike(deals[i]),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          DealDetailsScreen(deal: deals[i]),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding:
+                            EdgeInsets.all(width * 0.04),
+                            child: Column(
+                              children: deals
+                                  .map((d) => DealListCard(
+                                deal: d,
+                                isLiked:
+                                _likedDeals.contains(d['id']),
+                                onLike: () => _toggleLike(d),
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          DealDetailsScreen(deal: d),
+                                    ),
+                                  );
+                                },
+                              ))
+                                  .toList(),
+                            ),
+                          ),
+
+                        SizedBox(height: height * 0.05),
+                      ]),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // GLASS APP BAR
+  // ============================================================
+  Widget _buildGlassAppBar(BuildContext context, double width) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: width * 0.03,
+            vertical: width * 0.03,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ),
+              SizedBox(width: width * 0.03),
+              const Expanded(
+                child: Text(
+                  '🔥 Special Deals',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _isGridView = !_isGridView),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _isGridView ? Icons.view_list : Icons.grid_view,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // GLASS SEARCH + SORT
+  // ============================================================
+  Widget _buildGlassSearchBar(double width, double height) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: width * 0.04,
+        vertical: height * 0.005,
+      ),
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _searchQuery = v),
+                style: const TextStyle(color: Colors.white),
+                cursorColor: AppColors.accentGold,
+                decoration: InputDecoration(
+                  hintText: 'Search deals...',
+                  hintStyle: const TextStyle(color: Colors.white70),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white70),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.15),
+                  contentPadding:
+                  EdgeInsets.symmetric(vertical: height * 0.018),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide:
+                    BorderSide(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide:
+                    BorderSide(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(
+                        color: AppColors.accentGold, width: 1.5),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: height * 0.012),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _sortChip('recent', '🕐 Recent'),
+                _sortChip('discount', '🔥 Biggest Discount'),
+                _sortChip('price_low', '💰 Price ↑'),
+                _sortChip('price_high', '💎 Price ↓'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // GLASS QUICK CHIPS
+  // ============================================================
+  Widget _buildGlassQuickChips(double width, double height) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: width * 0.04,
+        vertical: height * 0.005,
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _quickChip(
+              '⭐ Featured',
+              _showFeaturedOnly,
+                  () => setState(() {
+                _showFeaturedOnly = !_showFeaturedOnly;
+                if (_showFeaturedOnly) {
+                  _showLikesOnly = false;
+                  _showExpiringSoon = false;
+                }
+              }),
+            ),
+            _quickChip(
+              '❤️ My Likes (${_likedDeals.length})',
+              _showLikesOnly,
+                  () {
+                if (_user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please login'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+                setState(() {
+                  _showLikesOnly = !_showLikesOnly;
+                  if (_showLikesOnly) {
+                    _showFeaturedOnly = false;
+                    _showExpiringSoon = false;
+                  }
+                });
+              },
+            ),
+            _quickChip(
+              '⏰ Expiring Soon',
+              _showExpiringSoon,
+                  () => setState(() {
+                _showExpiringSoon = !_showExpiringSoon;
+                if (_showExpiringSoon) {
+                  _showFeaturedOnly = false;
+                  _showLikesOnly = false;
+                }
+              }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // GLASS DISCOUNT FILTER
+  // ============================================================
+  Widget _buildGlassDiscountFilter(double width, double height) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: width * 0.04,
+        vertical: height * 0.005,
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _discountFilters.map((filter) {
+            final isSelected = _filterDiscount == filter['value'];
+            return GestureDetector(
+              onTap: () =>
+                  setState(() => _filterDiscount = filter['value']!),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: EdgeInsets.only(right: width * 0.02),
+                padding: EdgeInsets.symmetric(
+                    horizontal: width * 0.035,
+                    vertical: height * 0.008),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.red
+                      : Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? Colors.red
+                        : Colors.white.withOpacity(0.3),
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.4),
+                      blurRadius: 10,
+                    ),
+                  ]
+                      : [],
+                ),
+                child: Text(
+                  filter['label']!,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.white70,
+                    fontWeight:
+                    isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontSize: width * 0.028,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _sortChip(String value, String label) {
+    final isSelected = _sortBy == value;
+    final width = MediaQuery.of(context).size.width;
+    final height = MediaQuery.of(context).size.height;
+
+    return GestureDetector(
+      onTap: () => setState(() => _sortBy = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: EdgeInsets.only(right: width * 0.02),
+        padding: EdgeInsets.symmetric(
+            horizontal: width * 0.035, vertical: height * 0.008),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.accentGold
+              : Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.accentGold
+                : Colors.white.withOpacity(0.3),
+          ),
+          boxShadow: isSelected
+              ? [
+            BoxShadow(
+              color: AppColors.accentGold.withOpacity(0.4),
+              blurRadius: 10,
+            ),
+          ]
+              : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.black : Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: width * 0.026,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _quickChip(String label, bool active, VoidCallback onTap) {
+    final width = MediaQuery.of(context).size.width;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: EdgeInsets.only(right: width * 0.02),
+        padding: EdgeInsets.symmetric(
+            horizontal: width * 0.04, vertical: width * 0.02),
+        decoration: BoxDecoration(
+          color: active
+              ? AppColors.accentGold.withOpacity(0.25)
+              : Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active
+                ? AppColors.accentGold
+                : Colors.white.withOpacity(0.3),
+            width: active ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? AppColors.accentGold : Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: width * 0.028,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(double width, double height) {
+    return Center(
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: width * 0.1, vertical: 60),
+        padding: EdgeInsets.all(width * 0.08),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(width * 0.06),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.25),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.local_offer,
+                  size: width * 0.12, color: Colors.white),
+            ),
+            SizedBox(height: height * 0.025),
+            Text(
+              _searchQuery.isEmpty ? 'No deals available' : 'No results found',
+              style: TextStyle(
+                fontSize: width * 0.048,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: height * 0.01),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'Deals will appear here once admin adds them'
+                  : 'Try different filters',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: width * 0.032,
+                color: Colors.white70,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -87,9 +809,11 @@ class _CountdownTimerState extends State<CountdownTimer> {
       return;
     }
     final diff = widget.endDate!.difference(DateTime.now());
-    setState(() {
-      _remaining = diff.isNegative ? Duration.zero : diff;
-    });
+    if (mounted) {
+      setState(() {
+        _remaining = diff.isNegative ? Duration.zero : diff;
+      });
+    }
   }
 
   @override
@@ -119,8 +843,8 @@ class _CountdownTimerState extends State<CountdownTimer> {
             days > 0
                 ? '${days}d ${hours}h'
                 : hours > 0
-                ? '${hours}h ${minutes}m'
-                : '${minutes}m ${seconds}s',
+                    ? '${hours}h ${minutes}m'
+                    : '${minutes}m ${seconds}s',
             style: TextStyle(
               color: Colors.white,
               fontSize: width * 0.025,
@@ -133,418 +857,226 @@ class _CountdownTimerState extends State<CountdownTimer> {
   }
 }
 
-// ⭐️ Deal Grid Card
 class DealGridCard extends StatelessWidget {
   final Map<String, dynamic> deal;
-  final VoidCallback onTap;
-  final VoidCallback onLike;
   final bool isLiked;
+  final VoidCallback onLike;
+  final VoidCallback onTap;
 
   const DealGridCard({
     super.key,
     required this.deal,
-    required this.onTap,
+    required this.isLiked,
     required this.onLike,
-    this.isLiked = false,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final height = MediaQuery.of(context).size.height;
     final discount = deal['discount'] ?? 0;
-    final originalPrice = (deal['originalPrice'] ?? 0) as num;
-    final salePrice = (deal['salePrice'] ?? 0) as num;
-    final currency = deal['currency'] ?? 'USD';
-    final savings = originalPrice - salePrice;
+    final price = deal['salePrice'] ?? 0;
+    final oldPrice = deal['regularPrice'] ?? 0;
 
-    return HoverDealCard(
+    // Extract endDate for the timer
+    final endDate = deal['endDate'] != null
+        ? (deal['endDate'] as dynamic).toDate() as DateTime
+        : null;
+
+    return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(18)),
-              child: Stack(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildImage(deal['imageUrl'], height * 0.11, width),
-
-                  // Discount badge
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withOpacity(0.4),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        '-$discount%',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                  Expanded(
+                    child: Image.network(
+                      deal['imageUrl'] ?? '',
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (c, e, s) => Container(
+                        color: Colors.grey[900],
+                        child: const Icon(Icons.image, color: Colors.white24),
                       ),
                     ),
                   ),
-
-                  // Featured
-                  if (deal['featured'] == true)
-                    Positioned(
-                      top: 8,
-                      right: 32,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          gradient: AppColors.goldGradient,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.star,
-                            size: 10, color: Colors.black),
-                      ),
-                    ),
-
-                  // Countdown
-                  Positioned(
-                    bottom: 8,
-                    left: 8,
-                    child: CountdownTimer(
-                      endDate: (deal['endDate'] != null)
-                          ? (deal['endDate'] as dynamic).toDate()
-                          : null,
-                    ),
-                  ),
-
-                  // Like
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: GestureDetector(
-                      onTap: onLike,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isLiked ? Icons.favorite : Icons.favorite_border,
-                          color:
-                          isLiked ? Colors.red : Colors.grey.shade700,
-                          size: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(width * 0.025),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          deal['title'] ?? 'Unnamed',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: width * 0.032,
-                            color: Colors.grey.shade900,
-                          ),
+                          deal['title'] ?? '',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                        ),
-                        if ((deal['itemName'] ?? '').toString().isNotEmpty) ...[
-                          SizedBox(height: height * 0.003),
-                          Text(
-                            deal['itemName'],
-                            style: TextStyle(
-                              fontSize: width * 0.024,
-                              color: Colors.grey.shade500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
                           ),
-                        ],
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                        ),
+                        const SizedBox(height: 4),
                         Row(
                           children: [
                             Text(
-                              '$currency ${salePrice.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                color: Colors.red,
+                              '\$$price',
+                              style: const TextStyle(
+                                color: AppColors.accentGold,
                                 fontWeight: FontWeight.bold,
-                                fontSize: width * 0.038,
+                                fontSize: 16,
                               ),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             Text(
-                              '$currency ${originalPrice.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                color: Colors.grey.shade400,
-                                fontSize: width * 0.026,
+                              '\$$oldPrice',
+                              style: const TextStyle(
+                                color: Colors.white54,
                                 decoration: TextDecoration.lineThrough,
+                                fontSize: 11,
                               ),
                             ),
                           ],
                         ),
-                        if (savings > 0) ...[
-                          SizedBox(height: height * 0.003),
-                          Text(
-                            'Save $currency ${savings.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              fontSize: width * 0.022,
-                              color: Colors.green.shade600,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: GestureDetector(
+                  onTap: onLike,
+                  child: CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.black.withOpacity(0.5),
+                    child: Icon(
+                      isLiked ? Icons.favorite : Icons.favorite_border,
+                      color: isLiked ? Colors.red : Colors.white,
+                      size: 18,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImage(dynamic url, double height, double width) {
-    if (url == null || url.toString().isEmpty) {
-      return Container(
-        height: height,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.red.shade200, Colors.red.shade400],
+              // Added Countdown Timer Overlay
+              if (endDate != null)
+                Positioned(
+                  bottom: 80, // Adjust based on title/price height
+                  left: 8,
+                  child: CountdownTimer(endDate: endDate),
+                ),
+              if (discount > 0)
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '-$discount%',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
-        child: Center(
-          child: Icon(Icons.local_offer, size: width * 0.1, color: Colors.white),
-        ),
-      );
-    }
-
-    return Image.network(
-      url,
-      height: height,
-      width: double.infinity,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
-        height: height,
-        color: Colors.grey.shade200,
-        child: Icon(Icons.broken_image,
-            size: width * 0.1, color: Colors.grey.shade400),
       ),
     );
   }
 }
 
-// ⭐️ Deal List Card
 class DealListCard extends StatelessWidget {
   final Map<String, dynamic> deal;
-  final VoidCallback onTap;
-  final VoidCallback onLike;
   final bool isLiked;
+  final VoidCallback onLike;
+  final VoidCallback onTap;
 
   const DealListCard({
     super.key,
     required this.deal,
-    required this.onTap,
+    required this.isLiked,
     required this.onLike,
-    this.isLiked = false,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final height = MediaQuery.of(context).size.height;
-    final discount = deal['discount'] ?? 0;
-    final originalPrice = (deal['originalPrice'] ?? 0) as num;
-    final salePrice = (deal['salePrice'] ?? 0) as num;
-    final currency = deal['currency'] ?? 'USD';
-
-    return HoverDealCard(
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: EdgeInsets.only(bottom: height * 0.015),
+        margin: const EdgeInsets.only(bottom: 12),
+        height: 100,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
         ),
         child: Row(
           children: [
             ClipRRect(
-              borderRadius:
-              const BorderRadius.horizontal(left: Radius.circular(18)),
-              child: Stack(
-                children: [
-                  SizedBox(
-                    width: width * 0.32,
-                    height: width * 0.32,
-                    child:
-                    _buildImage(deal['imageUrl'], width * 0.32, width),
-                  ),
-                  // Discount badge
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '-$discount%',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+              child: Image.network(
+                deal['imageUrl'] ?? '',
+                width: 100,
+                height: 100,
+                fit: BoxFit.cover,
               ),
             ),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.all(width * 0.035),
+                padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      deal['title'] ?? 'Unnamed',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: width * 0.038,
-                        color: Colors.grey.shade900,
-                      ),
+                      deal['title'] ?? '',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if ((deal['itemName'] ?? '').toString().isNotEmpty) ...[
-                      SizedBox(height: height * 0.005),
-                      Text(
-                        deal['itemName'],
-                        style: TextStyle(
-                          fontSize: width * 0.028,
-                          color: Colors.grey.shade500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    SizedBox(height: height * 0.008),
-                    Row(
-                      children: [
-                        Text(
-                          '$currency ${salePrice.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontWeight: FontWeight.bold,
-                            fontSize: width * 0.04,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '$currency ${originalPrice.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            color: Colors.grey.shade400,
-                            fontSize: width * 0.028,
-                            decoration: TextDecoration.lineThrough,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: height * 0.005),
-                    CountdownTimer(
-                      endDate: (deal['endDate'] != null)
-                          ? (deal['endDate'] as dynamic).toDate()
-                          : null,
+                    Text(
+                      '\$${deal['salePrice']}',
+                      style: const TextStyle(
+                          color: AppColors.accentGold,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.only(right: width * 0.03),
-              child: GestureDetector(
-                onTap: onLike,
-                child: Icon(
-                  isLiked ? Icons.favorite : Icons.favorite_border,
-                  color: isLiked ? Colors.red : Colors.grey.shade400,
-                  size: width * 0.06,
-                ),
+            IconButton(
+              icon: Icon(
+                isLiked ? Icons.favorite : Icons.favorite_border,
+                color: isLiked ? Colors.red : Colors.white70,
               ),
+              onPressed: onLike,
             ),
+            const Icon(
+              Icons.chevron_right,
+              color: Colors.white38,
+            ),
+            const SizedBox(width: 8),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildImage(dynamic url, double height, double width) {
-    if (url == null || url.toString().isEmpty) {
-      return Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.red.shade200, Colors.red.shade400],
-          ),
-        ),
-        child: Icon(Icons.local_offer, size: width * 0.08, color: Colors.white),
-      );
-    }
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Container(
-        color: Colors.grey.shade200,
-        child: Icon(Icons.broken_image,
-            size: width * 0.08, color: Colors.grey.shade400),
       ),
     );
   }

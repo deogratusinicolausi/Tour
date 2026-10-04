@@ -8,6 +8,8 @@ enum HandGesture {
   openPalm,
   fist,
   pointing,
+  scroll,
+  peace,
 }
 
 class GestureService {
@@ -78,6 +80,30 @@ static const double _pinchReleaseThreshold = 0.22;
     // Check fist first so a closed hand always gets priority.
     if (openFingers == 0) {
       detectedGesture = HandGesture.fist;
+    }
+
+    // ✌️ PEACE SIGN
+    else if (indexOpen &&
+        middleOpen &&
+        !ringOpen &&
+        !pinkyOpen) {
+      detectedGesture = HandGesture.peace;
+
+      debugPrint(
+        '✌️ PEACE SIGN DETECTED',
+      );
+    }
+
+    // 🖖 THREE-FINGER SCROLL
+    else if (indexOpen &&
+        middleOpen &&
+        ringOpen &&
+        !pinkyOpen) {
+      detectedGesture = HandGesture.scroll;
+
+      debugPrint(
+        '🖖 THREE-FINGER SCROLL DETECTED',
+      );
     }
 
     // 🖐️ OPEN PALM

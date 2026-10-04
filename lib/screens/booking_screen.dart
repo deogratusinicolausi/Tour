@@ -7,8 +7,6 @@ import '../utils/colors.dart';
 import '../models/coupon_model.dart';
 import '../services/coupon_service.dart';
 import '../widgets/coupon_input_widget.dart';
-import '../services/payment_service.dart';
-import '../widgets/payment_method_selector.dart';
 import '../services/receipt_service.dart';
 import 'receipt_screen.dart';
 
@@ -57,9 +55,8 @@ class _BookingScreenState extends State<BookingScreen> {
   double _discount = 0;
   double get _finalTotal => _totalPrice - _discount;
 
-  // ⭐️ PAYMENT VARIABLES
-  String _paymentMethod = 'Mpesa';
-  final _paymentPhoneController = TextEditingController();
+  // ⭐️ PAYMENT PAUSED — booking confirmed without payment
+  String _paymentMethod = 'unpaid'; // (payment phone controller removed — will return when payment is back)
 
   @override
   void initState() {
@@ -125,41 +122,8 @@ class _BookingScreenState extends State<BookingScreen> {
 
     setState(() => _isLoading = true);
 
-    // ⭐️ PROCESS PAYMENT KWANZA
-    if (_paymentMethod != 'cash') {
-      if (_paymentPhoneController.text.trim().isEmpty) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ Please enter your phone number'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      // ⭐️ PROCESS PAYMENT KWANZA (kupitia Cloud Function)
-      final paymentService = PaymentService();
-      final response = await paymentService.initiatePayment(
-        mobileNumber: _paymentPhoneController.text.trim(),
-        amount: _finalTotal.toStringAsFixed(0),
-        externalId: 'TURIVA-${DateTime.now().millisecondsSinceEpoch}',
-        provider: _paymentMethod,
-      );
-
-      if (response['success'] != true) {
-        setState(() => _isLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Payment failed: ${response['message']}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-    }
+    // ⚠️ PAYMENT PAUSED — booking saves directly without payment
+    // When payment is ready, restore the block above.
 
     final couponService = CouponService();
 
@@ -276,9 +240,9 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Your booking for "${widget.itemName}" has been submitted.\n\nAdmin will confirm shortly.',
+              'Your booking for "${widget.itemName}" has been submitted.\n\n✅ Admin will confirm shortly.\n💳 Payment will be requested after confirmation.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.5),
             ),
             const SizedBox(height: 25),
             Container(
@@ -348,7 +312,7 @@ class _BookingScreenState extends State<BookingScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _requestsController.dispose();
-    _paymentPhoneController.dispose();
+    // _paymentPhoneController — removed (payment paused)
     super.dispose();
   }
 
@@ -595,40 +559,40 @@ class _BookingScreenState extends State<BookingScreen> {
               SizedBox(height: height * 0.03),
 
               // ⭐️ STEP 6: PAYMENT METHOD
-              _stepHeader('6', '💳 Payment Method', width),
-              SizedBox(height: height * 0.015),
-              PaymentMethodSelector(
-                selectedMethod: _paymentMethod,
-                onChanged: (value) {
-                  setState(() => _paymentMethod = value);
-                },
-              ),
-              SizedBox(height: height * 0.015),
-
-              // Phone Number Field (kwa Mobile Money)
-              TextField(
-                controller: _paymentPhoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: 'Phone Number (e.g. 255712345678)',
-                  prefixIcon: const Icon(Icons.phone_android),
-                  hintText: '2557XXXXXXXX',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                ),
-              ),
+              // _stepHeader('6', '💳 Payment Method', width),
+              // SizedBox(height: height * 0.015),
+              // PaymentMethodSelector(
+              //   selectedMethod: _paymentMethod,
+              //   onChanged: (value) {
+              //     setState(() => _paymentMethod = value);
+              //   },
+              // ),
+              // SizedBox(height: height * 0.015),
+              //
+              // // Phone Number Field (kwa Mobile Money)
+              // TextField(
+              //   controller: _paymentPhoneController,
+              //   keyboardType: TextInputType.phone,
+              //   decoration: InputDecoration(
+              //     labelText: 'Phone Number (e.g. 255712345678)',
+              //     prefixIcon: const Icon(Icons.phone_android),
+              //     hintText: '2557XXXXXXXX',
+              //     filled: true,
+              //     fillColor: Colors.white,
+              //     border: OutlineInputBorder(
+              //       borderRadius: BorderRadius.circular(12),
+              //       borderSide: BorderSide.none,
+              //     ),
+              //     enabledBorder: OutlineInputBorder(
+              //       borderRadius: BorderRadius.circular(12),
+              //       borderSide: BorderSide(color: Colors.grey.shade300),
+              //     ),
+              //     focusedBorder: OutlineInputBorder(
+              //       borderRadius: BorderRadius.circular(12),
+              //       borderSide: const BorderSide(color: AppColors.primary, width: 2),
+              //     ),
+              //   ),
+              // ),
 
               SizedBox(height: height * 0.03),
 

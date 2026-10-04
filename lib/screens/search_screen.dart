@@ -825,7 +825,7 @@ class _SearchScreenState extends State<SearchScreen> {
     Widget? screen;
     switch (item['type']) {
       case 'hotels':
-        screen = HotelDetailsScreen(hotel: item);
+        screen = HotelDetailsScreen(hotel: item, hotelData: {},);
         break;
       case 'tours':
         screen = TourDetailsScreen(tour: item);

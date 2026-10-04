@@ -202,6 +202,12 @@ class _HandControlScreenState extends State<HandControlScreen> {
         return '👆 Pointing';
       case HandGesture.none:
         return 'Hand detected';
+      case HandGesture.scroll:
+        // TODO: Handle this case.
+        throw UnimplementedError();
+      case HandGesture.peace:
+        // TODO: Handle this case.
+        throw UnimplementedError();
     }
   }
 

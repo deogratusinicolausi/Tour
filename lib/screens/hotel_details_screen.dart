@@ -12,12 +12,13 @@ import '../models/review_model.dart';
 import '../services/review_service.dart';
 import '../widgets/review_card_widget.dart';
 import 'reviews_list_screen.dart';
+import 'map_screen.dart';
 
 
 class HotelDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> hotel;
 
-  const HotelDetailsScreen({super.key, required this.hotel});
+  const HotelDetailsScreen({super.key, required this.hotel, required Map<String, dynamic> hotelData});
 
   @override
   State<HotelDetailsScreen> createState() => _HotelDetailsScreenState();
@@ -29,12 +30,15 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
   final User? _user = FirebaseAuth.instance.currentUser;
   bool _isLiked = false;
   int _currentImageIndex = 0;
+  // ⭐ Facilities selection
+  final Set<String> _selectedFacilities = {};
 
   @override
   void initState() {
     super.initState();
     _checkLiked();
     _logView();
+    _loadFacilitySelections(); // ⭐ NEW
   }
 
   Future<void> _logView() async {
@@ -56,27 +60,104 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
     }
   }
 
-  Future<void> _openInGoogleMaps() async {
-    final lat = widget.hotel['latitude'];
-    final lng = widget.hotel['longitude'];
+  // ===== Facilities: load saved picks =====
+  Future<void> _loadFacilitySelections() async {
+    if (_user == null) return;
+    try {
+      final doc = await _firestore
+          .collection('user_preferences')
+          .doc(_user!.uid)
+          .collection('hotel_facilities')
+          .doc(widget.hotel['id'])
+          .get();
+      if (doc.exists) {
+        final saved = (doc.data()?['facilities'] as List?) ?? [];
+        if (mounted) {
+          setState(() {
+            _selectedFacilities
+              ..clear()
+              ..addAll(saved.map((e) => e.toString()));
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('🔥 load facilities: $e');
+    }
+  }
 
-    if (lat == null || lng == null || lat == 0 || lng == 0) {
+  // ===== Facilities: save picks =====
+  Future<void> _saveFacilitySelections() async {
+    if (_user == null) return;
+    try {
+      await _firestore
+          .collection('user_preferences')
+          .doc(_user!.uid)
+          .collection('hotel_facilities')
+          .doc(widget.hotel['id'])
+          .set({
+        'facilities': _selectedFacilities.toList(),
+        'hotelName': widget.hotel['name'] ?? '',
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('🔥 save facilities: $e');
+    }
+  }
+
+  // ===== Facilities: toggle =====
+  void _toggleFacility(String label) {
+    setState(() {
+      if (_selectedFacilities.contains(label)) {
+        _selectedFacilities.remove(label);
+      } else {
+        _selectedFacilities.add(label);
+      }
+    });
+    _saveFacilitySelections();
+  }
+
+  // ===== Facilities: clear all =====
+  void _clearFacilities() {
+    setState(() => _selectedFacilities.clear());
+    _saveFacilitySelections();
+  }
+
+  Widget _sectionTitle(String title, double width) {
+    return Text(
+      title,
+      style: TextStyle(
+        fontSize: width * 0.05,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  // ⭐ Open TURIVA Street Map (OpenStreetMap)
+  void _openStreetMap() {
+    final lat = (widget.hotel['latitude'] as num?)?.toDouble();
+    final lng = (widget.hotel['longitude'] as num?)?.toDouble();
+
+    if (lat == null || lng == null || (lat == 0 && lng == 0)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('📍 Location not available'),
+          content: Text('📍 Location not available for this hotel'),
           backgroundColor: Colors.orange,
         ),
       );
       return;
     }
 
-    final url = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapScreen(
+          destinationLat: lat,
+          destinationLng: lng,
+          destinationName: widget.hotel['name'] ?? 'Hotel',
+        ),
+      ),
     );
-
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    }
   }
 
   Future<void> _checkLiked() async {
@@ -315,25 +396,89 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                       ],
                     ),
 
-                  SizedBox(height: height * 0.005),
-                  InkWell(
-                    onTap: _openInGoogleMaps,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Row(
-                        children: [
-                          Icon(Icons.map_outlined,
-                              color: AppColors.primary, size: width * 0.045),
-                          SizedBox(width: width * 0.02),
-                          Text(
-                            'Open in Google Maps',
-                            style: TextStyle(
-                              fontSize: width * 0.035,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
+                  SizedBox(height: height * 0.015),
+
+                  // ⭐ GLASS MAP PREVIEW CARD
+                  GestureDetector(
+                    onTap: _openStreetMap,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                        child: Container(
+                          padding: EdgeInsets.all(width * 0.04),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.13),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: AppColors.accentGold.withOpacity(0.5),
+                              width: 1.5,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.accentGold.withOpacity(0.2),
+                                blurRadius: 15,
+                                offset: const Offset(0, 5),
+                              ),
+                            ],
                           ),
-                        ],
+                          child: Row(
+                            children: [
+                              // Icon circle
+                              Container(
+                                padding: EdgeInsets.all(width * 0.03),
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.goldGradient,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.accentGold.withOpacity(0.5),
+                                      blurRadius: 12,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: Icon(
+                                  Icons.map,
+                                  color: Colors.black,
+                                  size: width * 0.06,
+                                ),
+                              ),
+                              SizedBox(width: width * 0.035),
+
+                              // Text
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'View on TURIVA Map',
+                                      style: TextStyle(
+                                        fontSize: width * 0.038,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    SizedBox(height: height * 0.003),
+                                    Text(
+                                      'Distance, nearby hotels & directions',
+                                      style: TextStyle(
+                                        fontSize: width * 0.028,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              Icon(
+                                Icons.arrow_forward_ios,
+                                color: AppColors.accentGold,
+                                size: width * 0.04,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -402,26 +547,101 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
                     SizedBox(height: height * 0.025),
                   ],
 
-                  // FACILITIES
+                  // FACILITIES (SELECTABLE)
                   if (facilities.isNotEmpty) ...[
-                    _sectionTitle('Facilities', width),
+                    Row(
+                      children: [
+                        _sectionTitle('Facilities', width),
+                        const Spacer(),
+                        if (_selectedFacilities.isNotEmpty)
+                          GestureDetector(
+                            onTap: _clearFacilities,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.blue.withOpacity(0.5),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.close, size: 14, color: Colors.blue),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Clear (${_selectedFacilities.length})',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.blue,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                     SizedBox(height: height * 0.01),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: facilities.map((f) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
+                        final label = f.toString();
+                        final selected = _selectedFacilities.contains(label);
+                        return GestureDetector(
+                          onTap: () => _toggleFacility(label),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: selected ? Colors.blue : Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: selected
+                                    ? Colors.blue.shade700
+                                    : Colors.white.withOpacity(0.3),
+                                width: selected ? 1.5 : 1,
+                              ),
+                              boxShadow: selected
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.blue.withOpacity(0.45),
+                                        blurRadius: 14,
+                                        spreadRadius: 1,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ]
+                                  : [],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (selected) ...[
+                                  const Icon(Icons.check_circle,
+                                      color: Colors.white, size: 15),
+                                  const SizedBox(width: 6),
+                                ] else ...[
+                                  const Icon(Icons.star_border,
+                                      color: Colors.white70, size: 14),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  label,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                                    color: selected ? Colors.white : Colors.white,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          child: Text('✨ $f',
-                              style: const TextStyle(fontSize: 13, color: Colors.white)),
                         );
                       }).toList(),
                     ),
@@ -779,17 +999,6 @@ class _HotelDetailsScreenState extends State<HotelDetailsScreen> {
           child: Icon(Icons.broken_image,
               size: width * 0.2, color: Colors.grey.shade400),
         ),
-      ),
-    );
-  }
-
-  Widget _sectionTitle(String title, double width) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: width * 0.05,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
       ),
     );
   }

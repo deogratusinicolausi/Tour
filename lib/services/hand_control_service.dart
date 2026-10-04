@@ -27,6 +27,7 @@ class HandControlService {
       _gestureController.stream;
 
   HandGesture _lastGesture = HandGesture.none;
+  bool _peaceTriggered = false;
 
   DateTime _lastGestureTime = DateTime.fromMillisecondsSinceEpoch(0);
 
@@ -70,6 +71,15 @@ class HandControlService {
     final difference =
         now.difference(_lastGestureTime).inMilliseconds;
 
+    if (gesture == HandGesture.peace) {
+      if (_peaceTriggered) {
+        return;
+      }
+      _peaceTriggered = true;
+    } else {
+      _peaceTriggered = false;
+    }
+
     // Prevent the same gesture from firing continuously.
     if (gesture == _lastGesture && difference < 700) {
       return;
@@ -102,6 +112,13 @@ class HandControlService {
         break;
       case HandGesture.none:
         _actionService.reset();
+        break;
+      case HandGesture.scroll:
+        // 🖖 Three-finger scrolling is handled
+        // directly by AirCursorController.
+        break;
+      case HandGesture.peace:
+        _actionService.perform(HandAction.next);
         break;
     }
   }

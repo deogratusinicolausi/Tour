@@ -11,6 +11,7 @@ import 'screens/main_screen.dart';
 import 'screens/hand_control_screen.dart';
 import 'screens/airtrip_explore_screen.dart';
 import 'services/notification_service.dart';
+import 'services/geofence_service.dart';
 import 'widgets/air_cursor.dart';
 import 'widgets/air_control_host.dart';
 import 'services/air_control_engine.dart';
@@ -25,8 +26,14 @@ void main() async {
       projectId: "turiva",
       authDomain: "turiva.firebaseapp.com",
       storageBucket: "turiva.firebasestorage.app",
+
     ),
+
+
   );
+
+  await NotificationService.init();
+  GeofenceService.start();
 
   // ⭐️ Connect to Functions Emulator (kwa testing tu)
   FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
@@ -48,6 +55,7 @@ class TurivaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: NotificationService.navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'TURIVA',
       theme: ThemeData(

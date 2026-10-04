@@ -4,7 +4,7 @@ import '../models/review_model.dart';
 class ReviewService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ⭐️ Get reviews for item
+  // ⭐️ Get reviews for item (real-time)
   Stream<List<ReviewModel>> getItemReviews(String itemId) {
     return _firestore
         .collection('reviews')
@@ -23,7 +23,7 @@ class ReviewService {
     });
   }
 
-  // ⭐️ Get all user reviews
+  // ⭐️ Get all user reviews (real-time)
   Stream<List<ReviewModel>> getUserReviews(String userId) {
     return _firestore
         .collection('reviews')
@@ -124,57 +124,48 @@ class ReviewService {
     }
   }
 
-  // ⭐️ Add review
+  // ⭐️ Add review (FIXED — removed broken block, single notification)
   Future<String?> addReview(ReviewModel review) async {
     try {
-      final ref =
-      await _firestore.collection('reviews').add(review.toMap());
+      // 1. Save the review
+      final ref = await _firestore
+          .collection('reviews')
+          .add(review.toMap());
 
-      // Log activity for admin
-      await _firestore.collection('activities').add({
-        'type': 'review',
-        'action': 'created',
-        'title': 'New Review: ${review.itemName}',
-        'description':
-        '${review.userName} gave ${review.rating.toStringAsFixed(1)}⭐',
-        'userId': review.userId,
-        'userName': review.userName,
-        'itemId': review.itemId,
-        'itemType': review.itemType,
-        'icon': '⭐',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      // 2. Log activity for admin (best effort, non-blocking)
+      try {
+        await _firestore.collection('activities').add({
+          'type': 'review',
+          'action': 'created',
+          'title': 'New Review: ${review.itemName}',
+          'description':
+          '${review.userName} gave ${review.rating.toStringAsFixed(1)}⭐',
+          'userId': review.userId,
+          'userName': review.userName,
+          'itemId': review.itemId,
+          'itemType': review.itemType,
+          'icon': '⭐',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
 
-      // Add notification for admin
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'userId': 'admin',
-        'title': '⭐ New Review!',
-        'body': '${review.userName} gave ${review.rating.toStringAsFixed(1)}⭐',
-        'type': 'review',
-        'category': 'info',
-        'icon': '⭐',
-        'actionType': '',
-        'actionId': review.itemId,
-        'isRead': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      }
-
-
-      );
-      // ⭐️ Send notification to admin
-      await _firestore.collection('notifications').add({
-        'userId': 'admin',
-        'title': '⭐ New Review Posted!',
-        'body': '${review.userName} gave ${review.rating.toStringAsFixed(1)}⭐ to ${review.itemName}',
-        'type': 'review',
-        'category': 'info',
-        'icon': '⭐',
-        'actionType': '',
-        'actionId': ref.id,
-        'isRead': false,
-        'isPushed': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      // 3. Notify admin (single notification, non-blocking)
+      try {
+        await _firestore.collection('notifications').add({
+          'userId': 'admin',
+          'title': '⭐ New Review Posted!',
+          'body':
+          '${review.userName} gave ${review.rating.toStringAsFixed(1)}⭐ to ${review.itemName}',
+          'type': 'review',
+          'category': 'info',
+          'icon': '⭐',
+          'actionType': '',
+          'actionId': ref.id,
+          'isRead': false,
+          'isPushed': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (_) {}
 
       return ref.id;
     } catch (e) {
@@ -206,7 +197,7 @@ class ReviewService {
     }
   }
 
-  // ⭐️ Mark review as helpful
+  // ⭐️ Mark review as helpful (toggle)
   Future<bool> markHelpful(String reviewId, String userId) async {
     try {
       final docRef = _firestore.collection('reviews').doc(reviewId);
@@ -246,8 +237,7 @@ class ReviewService {
   }
 
   // ⭐️ Check if user has booked (verified review)
-  Future<String?> getVerifiedBooking(
-      String userId, String itemId) async {
+  Future<String?> getVerifiedBooking(String userId, String itemId) async {
     try {
       final snapshot = await _firestore
           .collection('bookings')

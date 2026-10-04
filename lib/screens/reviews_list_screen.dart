@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/review_model.dart';
@@ -27,7 +28,7 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
   final _user = FirebaseAuth.instance.currentUser;
 
   String _filterRating = 'all';
-  String _sortBy = 'recent';
+  final String _sortBy = 'recent';
   bool _hasReviewed = false;
   Map<String, dynamic> _stats = {};
 
@@ -58,11 +59,122 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
     final height = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('⭐ Reviews & Ratings'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // ===== BACKGROUND IMAGE =====
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(
+                    'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+          // ===== DARK OVERLAY =====
+          Container(color: Colors.black.withOpacity(0.7)),
+
+          // ===== CONTENT =====
+          SafeArea(
+            child: Column(
+              children: [
+                // ===== GLASS APP BAR =====
+                _buildGlassAppBar(context, width),
+
+                // ===== CONTENT SCROLL =====
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      // GLASS STATS CARD
+                      _buildGlassStatsCard(width, height),
+
+                      // GLASS FILTER CHIPS
+                      _buildGlassFilterChips(width, height),
+
+                      // REVIEWS
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: width * 0.04,
+                            vertical: height * 0.01),
+                        child: StreamBuilder<List<ReviewModel>>(
+                          stream: _reviewService
+                              .getItemReviews(widget.itemId),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Padding(
+                                padding:
+                                EdgeInsets.symmetric(vertical: 60),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.accentGold,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final all = snapshot.data ?? [];
+                            final reviews = all.where((r) {
+                              if (_filterRating == 'all') return true;
+                              return r.rating.round().toString() ==
+                                  _filterRating;
+                            }).toList();
+
+                            if (reviews.isEmpty) {
+                              return _buildEmptyState(width, height);
+                            }
+
+                            return Column(
+                              children: reviews
+                                  .map((r) => Padding(
+                                padding: EdgeInsets.only(
+                                    bottom: width * 0.03),
+                                child: ClipRRect(
+                                  borderRadius:
+                                  BorderRadius.circular(16),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(
+                                        sigmaX: 12,
+                                        sigmaY: 12),
+                                    child: ReviewCard(
+                                      review: r,
+                                      currentUserId: _user?.uid,
+                                      onHelpfulTap: () async {
+                                        if (_user == null) return;
+                                        await _reviewService
+                                            .markHelpful(
+                                          r.id,
+                                          _user!.uid,
+                                        );
+                                      },
+                                      onDelete:
+                                      r.userId == _user?.uid
+                                          ? () =>
+                                          _confirmDelete(r)
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                              ))
+                                  .toList(),
+                            );
+                          },
+                        ),
+                      ),
+
+                      SizedBox(height: height * 0.08),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       floatingActionButton: !_hasReviewed && _user != null
           ? FloatingActionButton.extended(
@@ -93,12 +205,104 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
         ),
       )
           : null,
-      body: Column(
-        children: [
-          // STATS HEADER
-          Container(
+    );
+  }
+
+  // ============================================================
+  // GLASS APP BAR
+  // ============================================================
+  Widget _buildGlassAppBar(BuildContext context, double width) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: width * 0.03,
+        vertical: width * 0.02,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: width * 0.02,
+              vertical: width * 0.02,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                SizedBox(width: width * 0.03),
+                const Expanded(
+                  child: Text(
+                    '⭐ Reviews & Ratings',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // GLASS STATS CARD (average + breakdown)
+  // ============================================================
+  Widget _buildGlassStatsCard(double width, double height) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: width * 0.04,
+        vertical: height * 0.008,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
             padding: EdgeInsets.all(width * 0.05),
-            color: AppColors.primary,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.13),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
             child: Row(
               children: [
                 // Average
@@ -136,7 +340,7 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
                       final percent =
                       total > 0 ? (count / total) : 0.0;
                       return Padding(
-                        padding: EdgeInsets.symmetric(vertical: 2),
+                        padding: const EdgeInsets.symmetric(vertical: 2),
                         child: Row(
                           children: [
                             Text(
@@ -179,131 +383,137 @@ class _ReviewsListScreenState extends State<ReviewsListScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
 
-          // FILTER CHIPS
-          Container(
-            padding: EdgeInsets.symmetric(
-                horizontal: width * 0.04, vertical: height * 0.01),
-            color: Colors.white,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  'all',
-                  '5',
-                  '4',
-                  '3',
-                  '2',
-                  '1',
-                ].map((r) {
-                  final isSelected = _filterRating == r;
-                  return GestureDetector(
-                    onTap: () => setState(() => _filterRating = r),
-                    child: Container(
-                      margin: EdgeInsets.only(right: width * 0.02),
-                      padding: EdgeInsets.symmetric(
-                          horizontal: width * 0.035,
-                          vertical: height * 0.006),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppColors.primary
-                            : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        r == 'all' ? 'All' : '$r ⭐',
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : Colors.grey.shade700,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                          fontSize: width * 0.026,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          // REVIEWS
-          Expanded(
-            child: StreamBuilder<List<ReviewModel>>(
-              stream: _reviewService.getItemReviews(widget.itemId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final all = snapshot.data ?? [];
-                var reviews = all.where((r) {
-                  if (_filterRating == 'all') return true;
-                  return r.rating.round().toString() == _filterRating;
-                }).toList();
-
-                if (reviews.isEmpty) {
-                  return _buildEmptyState(width, height);
-                }
-
-                return ListView.builder(
-                  padding: EdgeInsets.all(width * 0.04),
-                  itemCount: reviews.length,
-                  itemBuilder: (context, i) => ReviewCard(
-                    review: reviews[i],
-                    currentUserId: _user?.uid,
-                    onHelpfulTap: () async {
-                      if (_user == null) return;
-                      await _reviewService.markHelpful(
-                        reviews[i].id,
-                        _user!.uid,
-                      );
-                    },
-                    onDelete: reviews[i].userId == _user?.uid
-                        ? () => _confirmDelete(reviews[i])
-                        : null,
+  // ============================================================
+  // GLASS FILTER CHIPS
+  // ============================================================
+  Widget _buildGlassFilterChips(double width, double height) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: width * 0.04,
+        vertical: height * 0.005,
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: ['all', '5', '4', '3', '2', '1'].map((r) {
+            final isSelected = _filterRating == r;
+            return GestureDetector(
+              onTap: () => setState(() => _filterRating = r),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: EdgeInsets.only(right: width * 0.02),
+                padding: EdgeInsets.symmetric(
+                    horizontal: width * 0.045,
+                    vertical: height * 0.01),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.accentGold
+                      : Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.accentGold
+                        : Colors.white.withOpacity(0.3),
+                    width: isSelected ? 1.5 : 1,
                   ),
-                );
-              },
-            ),
-          ),
-        ],
+                  boxShadow: isSelected
+                      ? [
+                    BoxShadow(
+                      color: AppColors.accentGold
+                          .withOpacity(0.4),
+                      blurRadius: 10,
+                    ),
+                  ]
+                      : [],
+                ),
+                child: Text(
+                  r == 'all' ? 'All' : '$r ⭐',
+                  style: TextStyle(
+                    color: isSelected ? Colors.black : Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: width * 0.028,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
+  // ============================================================
+  // GLASS EMPTY STATE
+  // ============================================================
   Widget _buildEmptyState(double width, double height) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.rate_review,
-              size: width * 0.2, color: Colors.grey.shade300),
-          SizedBox(height: height * 0.02),
-          Text(
-            'No reviews yet',
-            style: TextStyle(
-              fontSize: width * 0.05,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
-            ),
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: height * 0.06),
+      child: Center(
+        child: Container(
+          margin: EdgeInsets.symmetric(horizontal: width * 0.08),
+          padding: EdgeInsets.all(width * 0.08),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.3)),
           ),
-          SizedBox(height: height * 0.01),
-          Text(
-            'Be the first to review!',
-            style: TextStyle(color: Colors.grey.shade400),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(width * 0.06),
+                decoration: BoxDecoration(
+                  gradient: AppColors.goldGradient,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accentGold.withOpacity(0.5),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.rate_review,
+                    size: width * 0.12, color: Colors.black),
+              ),
+              SizedBox(height: height * 0.025),
+              Text(
+                'No reviews yet',
+                style: TextStyle(
+                  fontSize: width * 0.048,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              SizedBox(height: height * 0.01),
+              Text(
+                'Be the first to review!',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: width * 0.032,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
+  // ============================================================
+  // DELETE DIALOG
+  // ============================================================
   void _confirmDelete(ReviewModel review) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Delete Review?'),
         content: const Text('This action cannot be undone.'),
         actions: [

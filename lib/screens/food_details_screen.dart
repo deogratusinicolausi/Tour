@@ -225,15 +225,28 @@ class _FoodDetailsScreenState extends State<FoodDetailsScreen> {
                     itemCount: images.length,
                     onPageChanged: (i) =>
                         setState(() => _currentImageIndex = i),
-                    itemBuilder: (context, i) => Image.network(
-                      images[i],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Icon(Icons.broken_image,
-                            size: 80, color: Colors.white),
-                      ),
-                    ),
+                    itemBuilder: (context, i) => i == 0
+                        ? Hero(
+                            tag: 'food_${widget.food['id']}',
+                            child: Image.network(
+                              images[i],
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.broken_image,
+                                    size: 80, color: Colors.white),
+                              ),
+                            ),
+                          )
+                        : Image.network(
+                            images[i],
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: Colors.grey.shade300,
+                              child: const Icon(Icons.broken_image,
+                                  size: 80, color: Colors.white),
+                            ),
+                          ),
                   ),
                   Positioned.fill(
                     child: Container(

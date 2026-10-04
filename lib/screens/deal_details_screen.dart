@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../services/wishlist_service.dart';
 import '../services/cart_service.dart';
+import '../widgets/deal_card_widget.dart';  // 👈 HII INA-IMPORT CountdownTimer
 import '../models/cart_model.dart';
 import '../utils/colors.dart';
 import '../widgets/deal_card_widget.dart';
@@ -158,538 +160,599 @@ class _DealDetailsScreenState extends State<DealDetailsScreen> {
     final savings = originalPrice - salePrice;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          // IMAGE HEADER
-          SliverAppBar(
-            expandedHeight: height * 0.4,
-            pinned: true,
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
-            leading: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.4),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.arrow_back,
-                    color: Colors.white, size: 20),
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-            actions: [
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.4),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: _isLiked ? Colors.red : Colors.white,
-                    size: 22,
-                  ),
-                ),
-                onPressed: _toggleLike,
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  (widget.deal['imageUrl'] ?? '').toString().isNotEmpty
-                      ? Image.network(
-                    widget.deal['imageUrl'],
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      color: Colors.red.shade300,
-                      child: const Icon(Icons.local_offer,
-                          size: 80, color: Colors.white),
-                    ),
-                  )
-                      : Container(
-                    color: Colors.red.shade300,
-                    child: const Icon(Icons.local_offer,
-                        size: 80, color: Colors.white),
-                  ),
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.6),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Discount badge
-                  Positioned(
-                    top: 100,
-                    left: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withOpacity(0.6),
-                            blurRadius: 15,
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        '-$discount% OFF',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Countdown
-                  Positioned(
-                    bottom: 16,
-                    right: 16,
-                    child: CountdownTimer(
-                      endDate: (widget.deal['endDate'] != null)
-                          ? (widget.deal['endDate'] as dynamic).toDate()
-                          : null,
-                    ),
-                  ),
-                ],
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Background image
+          Container(
+            height: double.infinity,
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              image: DecorationImage(
+                image: NetworkImage(
+                    'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                fit: BoxFit.cover,
               ),
             ),
           ),
+          // Dark overlay
+          Container(color: Colors.black.withOpacity(0.7)),
 
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(width * 0.05),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // TITLE
-                  Text(
-                    widget.deal['title'] ?? '',
-                    style: TextStyle(
-                      fontSize: width * 0.07,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade900,
-                    ),
-                  ),
-                  if ((widget.deal['itemName'] ?? '').toString().isNotEmpty) ...[
-                    SizedBox(height: height * 0.005),
-                    Text(
-                      widget.deal['itemName'],
-                      style: TextStyle(
-                        fontSize: width * 0.042,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-
-                  SizedBox(height: height * 0.02),
-
-                  // PRICE BOX
-                  Container(
-                    padding: EdgeInsets.all(width * 0.05),
+          // ===== CONTENT =====
+          CustomScrollView(
+            slivers: [
+              // ===== IMAGE HEADER =====
+              SliverAppBar(
+                expandedHeight: height * 0.4,
+                pinned: true,
+                backgroundColor: Colors.black.withOpacity(0.4),
+                foregroundColor: Colors.white,
+                stretch: true,
+                leading: IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.red.shade400, Colors.red.shade600],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                      color: Colors.black.withOpacity(0.4),
+                      shape: BoxShape.circle,
                     ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'SALE PRICE',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 12,
-                                    letterSpacing: 1,
-                                  ),
-                                ),
-                                Text(
-                                  '$currency ${salePrice.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: width * 0.1,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'Original',
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: width * 0.028,
-                                  ),
-                                ),
-                                Text(
-                                  '$currency ${originalPrice.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: width * 0.05,
-                                    decoration: TextDecoration.lineThrough,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        if (savings > 0) ...[
-                          SizedBox(height: height * 0.015),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: width * 0.04, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.savings,
-                                    color: Colors.white, size: 20),
-                                SizedBox(width: width * 0.02),
-                                Text(
-                                  'You save $currency ${savings.toStringAsFixed(0)}!',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: width * 0.035,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                    child: const Icon(Icons.arrow_back,
+                        color: Colors.white, size: 20),
                   ),
-
-                  SizedBox(height: height * 0.025),
-
-                  // DESCRIPTION
-                  if ((widget.deal['description'] ?? '')
-                      .toString()
-                      .isNotEmpty) ...[
-                    _sectionTitle('📖 About this Deal', width),
-                    SizedBox(height: height * 0.01),
-                    Text(
-                      widget.deal['description'],
-                      style: TextStyle(
-                        fontSize: width * 0.037,
-                        color: Colors.grey.shade700,
-                        height: 1.6,
-                      ),
-                    ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  // VALIDITY
-                  if (widget.deal['endDate'] != null) ...[
-                    _sectionTitle('📅 Validity', width),
-                    SizedBox(height: height * 0.01),
-                    Container(
-                      padding: EdgeInsets.all(width * 0.04),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                actions: [
+                  IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
+                        color: Colors.black.withOpacity(0.4),
+                        shape: BoxShape.circle,
                       ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.schedule,
-                              color: Colors.red, size: width * 0.06),
-                          SizedBox(width: width * 0.03),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Deal Ends On',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: width * 0.028,
-                                  ),
-                                ),
-                                Text(
-                                  DateFormat('EEEE, dd MMM yyyy').format(
-                                    (widget.deal['endDate'] as dynamic)
-                                        .toDate(),
-                                  ),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: width * 0.038,
-                                    color: Colors.grey.shade800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      child: Icon(
+                        _isLiked ? Icons.favorite : Icons.favorite_border,
+                        color: _isLiked ? Colors.red : Colors.white,
+                        size: 22,
                       ),
                     ),
-                    SizedBox(height: height * 0.025),
-                  ],
-
-                  SizedBox(height: height * 0.02),
-
-                  // ACTION BUTTONS
-                  Row(
+                    onPressed: _toggleLike,
+                  ),
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      GestureDetector(
-                        onTap: _toggleLike,
+                      // Background image
+                      (widget.deal['imageUrl'] ?? '').toString().isNotEmpty
+                          ? Image.network(
+                        widget.deal['imageUrl'],
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Colors.red.shade300,
+                          child: const Icon(Icons.local_offer,
+                              size: 80, color: Colors.white),
+                        ),
+                      )
+                          : Container(
+                        color: Colors.red.shade300,
+                        child: const Icon(Icons.local_offer,
+                            size: 80, color: Colors.white),
+                      ),
+
+                      // Dark gradient overlay
+                      Positioned.fill(
                         child: Container(
-                          padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
-                            color: _isLiked
-                                ? Colors.red.withOpacity(0.1)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: _isLiked
-                                  ? Colors.red
-                                  : Colors.grey.shade300,
-                              width: 2,
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.black.withOpacity(0.65),
+                                Colors.transparent,
+                                Colors.black.withOpacity(0.75),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
                             ),
-                          ),
-                          child: Icon(
-                            _isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: _isLiked
-                                ? Colors.red
-                                : Colors.grey.shade600,
-                            size: width * 0.07,
                           ),
                         ),
                       ),
-                      SizedBox(width: width * 0.03),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: _isInCart ? null : _addToCart,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                                vertical: height * 0.022),
-                            decoration: BoxDecoration(
-                              gradient: _isInCart
-                                  ? LinearGradient(
-                                colors: [
-                                  Colors.green.shade400,
-                                  Colors.green.shade600,
-                                ],
-                              )
-                                  : AppColors.mainGradient,
-                              borderRadius: BorderRadius.circular(14),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primary
-                                      .withOpacity(0.4),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    _isInCart
-                                        ? Icons.check_circle
-                                        : Icons.shopping_cart,
-                                    color: Colors.white,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    _isInCart
-                                        ? 'ADDED TO CART'
-                                        : 'ADD TO CART',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                ],
+
+                      // Discount badge
+                      Positioned(
+                        top: 100,
+                        left: 16,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(15),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.6),
+                                blurRadius: 15,
                               ),
+                            ],
+                          ),
+                          child: Text(
+                            '-$discount% OFF',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
                           ),
+                        ),
+                      ),
+
+                      // Countdown
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: CountdownTimer(
+                          endDate: (widget.deal['endDate'] != null)
+                              ? (widget.deal['endDate'] as dynamic).toDate()
+                              : null,
                         ),
                       ),
                     ],
                   ),
+                ),
+              ),
 
-                  SizedBox(height: height * 0.02),
-
-                  // BOOK NOW BUTTON
-                  SizedBox(
-                    width: double.infinity,
-                    height: 55,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => BookingScreen(
-                              itemType: 'deal',
-                              itemId: widget.deal['id'],
-                              itemName: widget.deal['title'] ?? '',
-                              itemImage: widget.deal['imageUrl'] ?? '',
-                              price: salePrice.toDouble(),
-                              currency: currency,
-                            ),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text(
-                        'BOOK THIS DEAL',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: height * 0.025),
-
-                  // REVIEWS
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // ===== CONTENT =====
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(width * 0.05),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      FutureBuilder<Map<String, dynamic>>(
-                        future: ReviewService().getItemRatingStats(widget.deal['id']),
-                        builder: (context, snapshot) {
-                          final stats = snapshot.data ?? {};
-                          final avg = (stats['average'] ?? 0.0).toStringAsFixed(1);
-                          final total = stats['total'] ?? 0;
-                          return Row(
-                            children: [
-                              _sectionTitle('⭐ Reviews', width),
-                              SizedBox(width: width * 0.02),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accentGold.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(10),
+                      // TITLE
+                      Text(
+                        widget.deal['title'] ?? '',
+                        style: TextStyle(
+                          fontSize: width * 0.07,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if ((widget.deal['itemName'] ?? '').toString().isNotEmpty) ...[
+                        SizedBox(height: height * 0.005),
+                        Text(
+                          widget.deal['itemName'],
+                          style: TextStyle(
+                            fontSize: width * 0.042,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+
+                      SizedBox(height: height * 0.02),
+
+                      // PRICE BOX (glass)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                          child: Container(
+                            padding: EdgeInsets.all(width * 0.05),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.red.shade400,
+                                  Colors.red.shade600,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withOpacity(0.3),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 8),
                                 ),
-                                child: Row(
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Icon(Icons.star, color: AppColors.accentGold, size: 14),
-                                    SizedBox(width: width * 0.01),
-                                    Text(
-                                      '$avg ($total)',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                      ),
+                                    Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Original Price',
+                                          style: TextStyle(
+                                            color: Colors.white
+                                                .withOpacity(0.8),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        Text(
+                                          '$currency ${originalPrice.toStringAsFixed(2)}',
+                                          style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 18,
+                                            decoration:
+                                            TextDecoration.lineThrough,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.end,
+                                      children: [
+                                        const Text(
+                                          'Deal Price',
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12),
+                                        ),
+                                        Text(
+                                          '$currency ${salePrice.toStringAsFixed(2)}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 26,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ReviewsListScreen(
-                                itemId: widget.deal['id'],
-                                itemType: 'deal',
-                                itemName: widget.deal['title'] ?? '',
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text('See All'),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: height * 0.01),
-                  StreamBuilder<List<ReviewModel>>(
-                    stream: ReviewService().getItemReviews(widget.deal['id']),
-                    builder: (context, snapshot) {
-                      final reviews = snapshot.data ?? [];
-                      if (reviews.isEmpty) {
-                        return Container(
-                          padding: EdgeInsets.all(width * 0.05),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.rate_review, color: Colors.grey.shade400, size: 32),
-                                SizedBox(height: height * 0.01),
-                                Text('No reviews yet',
-                                    style: TextStyle(color: Colors.grey.shade500)),
+                                const Divider(color: Colors.white24),
+                                Text(
+                                  'You save $currency ${savings.toStringAsFixed(2)}!',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
-                        );
-                      }
-                      return Column(
-                        children: reviews.take(2).map((r) {
-                          return ReviewCard(
-                            review: r,
-                            currentUserId: _user?.uid,
-                            onHelpfulTap: () async {
-                              if (_user == null) return;
-                              await ReviewService().markHelpful(r.id, _user!.uid);
-                            },
-                          );
-                        }).toList(),
-                      );
-                    },
-                  ),
+                        ),
+                      ),
 
-                  SizedBox(height: height * 0.05),
-                ],
+                      SizedBox(height: height * 0.025),
+
+                      // DESCRIPTION
+                      if ((widget.deal['description'] ?? '')
+                          .toString()
+                          .isNotEmpty) ...[
+                        _sectionTitle('📖 About this Deal', width),
+                        SizedBox(height: height * 0.01),
+                        Text(
+                          widget.deal['description'],
+                          style: TextStyle(
+                            fontSize: width * 0.037,
+                            color: Colors.white70,
+                            height: 1.6,
+                          ),
+                        ),
+                        SizedBox(height: height * 0.025),
+                      ],
+
+                      // VALIDITY
+                      if (widget.deal['endDate'] != null) ...[
+                        _sectionTitle('📅 Validity', width),
+                        SizedBox(height: height * 0.01),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: BackdropFilter(
+                            filter:
+                            ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                            child: Container(
+                              padding: EdgeInsets.all(width * 0.04),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.schedule,
+                                      color: Colors.red,
+                                      size: width * 0.06),
+                                  SizedBox(width: width * 0.03),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Deal Ends On',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: width * 0.028,
+                                          ),
+                                        ),
+                                        Text(
+                                          DateFormat('EEEE, dd MMM yyyy')
+                                              .format((widget.deal['endDate']
+                                          as dynamic)
+                                              .toDate()),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: width * 0.038,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: height * 0.025),
+                      ],
+
+                      SizedBox(height: height * 0.02),
+
+                      // ACTION BUTTONS (like + cart)
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: _toggleLike,
+                            child: Container(
+                              padding: EdgeInsets.all(width * 0.04),
+                              decoration: BoxDecoration(
+                                color: _isLiked
+                                    ? Colors.red.withOpacity(0.15)
+                                    : Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: _isLiked
+                                      ? Colors.red
+                                      : Colors.white.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Icon(
+                                _isLiked
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: _isLiked
+                                    ? Colors.red
+                                    : Colors.white,
+                                size: width * 0.07,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: width * 0.03),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _isInCart ? null : _addToCart,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    vertical: height * 0.022),
+                                decoration: BoxDecoration(
+                                  gradient: _isInCart
+                                      ? LinearGradient(
+                                    colors: [
+                                      Colors.green.shade400,
+                                      Colors.green.shade600,
+                                    ],
+                                  )
+                                      : AppColors.mainGradient,
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.primary
+                                          .withOpacity(0.4),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Row(
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        _isInCart
+                                            ? Icons.check_circle
+                                            : Icons.shopping_cart,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        _isInCart
+                                            ? 'ADDED TO CART'
+                                            : 'ADD TO CART',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: height * 0.02),
+
+                      // BOOK NOW BUTTON
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BookingScreen(
+                                  itemType: 'deal',
+                                  itemId: widget.deal['id'],
+                                  itemName: widget.deal['title'] ?? '',
+                                  itemImage: widget.deal['imageUrl'] ?? '',
+                                  price: salePrice.toDouble(),
+                                  currency: currency,
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text(
+                            'BOOK THIS DEAL',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(height: height * 0.025),
+
+                      // REVIEWS HEADER
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          FutureBuilder<Map<String, dynamic>>(
+                            future: ReviewService()
+                                .getItemRatingStats(widget.deal['id']),
+                            builder: (context, snapshot) {
+                              final stats = snapshot.data ?? {};
+                              final avg = (stats['average'] ?? 0.0)
+                                  .toStringAsFixed(1);
+                              final total = stats['total'] ?? 0;
+                              return Row(
+                                children: [
+                                  _sectionTitle('⭐ Reviews', width),
+                                  SizedBox(width: width * 0.02),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accentGold
+                                          .withOpacity(0.15),
+                                      borderRadius:
+                                      BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.star,
+                                            color: AppColors.accentGold,
+                                            size: 14),
+                                        SizedBox(width: width * 0.01),
+                                        Text(
+                                          '$avg ($total)',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ReviewsListScreen(
+                                    itemId: widget.deal['id'],
+                                    itemType: 'deal',
+                                    itemName: widget.deal['title'] ?? '',
+                                  ),
+                                ),
+                              );
+                            },
+                            child: const Text('See All',
+                                style: TextStyle(
+                                    color: AppColors.accentGold)),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: height * 0.01),
+
+                      // REVIEWS LIST
+                      StreamBuilder<List<ReviewModel>>(
+                        stream: ReviewService()
+                            .getItemReviews(widget.deal['id']),
+                        builder: (context, snapshot) {
+                          final reviews = snapshot.data ?? [];
+                          if (reviews.isEmpty) {
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(
+                                    sigmaX: 14, sigmaY: 14),
+                                child: Container(
+                                  padding: EdgeInsets.all(width * 0.05),
+                                  decoration: BoxDecoration(
+                                    color:
+                                    Colors.white.withOpacity(0.1),
+                                    borderRadius:
+                                    BorderRadius.circular(12),
+                                  ),
+                                  child: Center(
+                                    child: Column(
+                                      children: [
+                                        const Icon(Icons.rate_review,
+                                            color: Colors.white70,
+                                            size: 32),
+                                        SizedBox(
+                                            height: height * 0.01),
+                                        const Text('No reviews yet',
+                                            style: TextStyle(
+                                                color:
+                                                Colors.white70)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          return Column(
+                            children: reviews.take(2).map((r) {
+                              return ReviewCard(
+                                review: r,
+                                currentUserId: _user?.uid,
+                                onHelpfulTap: () async {
+                                  if (_user == null) return;
+                                  await ReviewService()
+                                      .markHelpful(r.id, _user!.uid);
+                                },
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+
+                      SizedBox(height: height * 0.05),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -702,7 +765,7 @@ class _DealDetailsScreenState extends State<DealDetailsScreen> {
       style: TextStyle(
         fontSize: width * 0.05,
         fontWeight: FontWeight.bold,
-        color: Colors.grey.shade900,
+        color: Colors.white,
       ),
     );
   }

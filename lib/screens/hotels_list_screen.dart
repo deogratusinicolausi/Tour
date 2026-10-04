@@ -6,6 +6,7 @@ import '../services/firestore_service.dart';
 import '../services/wishlist_service.dart';
 import '../utils/colors.dart';
 import '../widgets/hotel_card_widget.dart';
+import '../widgets/animated_search_background.dart'; // ⭐ IMPORT MPYA
 import 'hotel_details_screen.dart';
 
 class HotelsListScreen extends StatefulWidget {
@@ -20,24 +21,22 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
   final _wishlistService = WishlistService();
   final _user = FirebaseAuth.instance.currentUser;
   final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
 
   String _searchQuery = '';
   String _sortBy = 'recent';
   bool _isGridView = true;
   bool _showFeaturedOnly = false;
   bool _showCompare = false;
-  bool _showLikesOnly = false;      // ⭐ ONGEZA
-  bool _showTrendingOnly = false;   // ⭐ ONGEZA
+  bool _showLikesOnly = false;
+  bool _showTrendingOnly = false;
+  bool _isSearchFocused = false; // ⭐ Kwa animation
 
-  // Filters
   RangeValues _priceRange = const RangeValues(0, 5000);
   List<String> _selectedAmenities = [];
   int _minRating = 0;
 
-  // Compare
   final List<String> _compareItems = [];
-
-  // Liked hotels (cached)
   final Set<String> _likedHotels = {};
 
   @override
@@ -54,10 +53,12 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
           .where('userId', isEqualTo: _user!.uid)
           .where('itemType', isEqualTo: 'hotel')
           .get();
-      setState(() {
-        _likedHotels.addAll(
-            snapshot.docs.map((d) => d.data()['itemId'] as String));
-      });
+      if (mounted) {
+        setState(() {
+          _likedHotels
+              .addAll(snapshot.docs.map((d) => d.data()['itemId'] as String));
+        });
+      }
     } catch (e) {
       print('Error: $e');
     }
@@ -66,13 +67,15 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  List<Map<String, dynamic>> _filterAndSort(
-      List<Map<String, dynamic>> all) {
+  // ═══════════════════════════════════════════
+  // FILTER & SORT
+  // ═══════════════════════════════════════════
+  List<Map<String, dynamic>> _filterAndSort(List<Map<String, dynamic>> all) {
     var list = all.where((h) {
-      // Search
       final search = _searchQuery.toLowerCase();
       final matchSearch = _searchQuery.isEmpty ||
           (h['name'] ?? '').toString().toLowerCase().contains(search) ||
@@ -82,28 +85,20 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
               .toLowerCase()
               .contains(search);
 
-      // Featured
       final matchFeatured = !_showFeaturedOnly || h['featured'] == true;
-
-      // ⭐ Likes only
-      final matchLikes = !_showLikesOnly ||
-          _likedHotels.contains(h['id']);
-
-      // ⭐ Trending (rating >= 4.0 au views > 100)
+      final matchLikes =
+          !_showLikesOnly || _likedHotels.contains(h['id']);
       final matchTrending = !_showTrendingOnly ||
           ((h['rating'] ?? 0) as num) >= 4.0 ||
           ((h['views'] ?? 0) as num) > 50;
 
-      // Price
       final price = (h['priceFrom'] ?? 0) as num;
-      final matchPrice = price >= _priceRange.start &&
-          price <= _priceRange.end;
+      final matchPrice =
+          price >= _priceRange.start && price <= _priceRange.end;
 
-      // Rating
       final rating = (h['rating'] ?? 0) as num;
       final matchRating = rating >= _minRating;
 
-      // Amenities
       final facilities = (h['facilities'] as List?) ?? [];
       final matchAmenities = _selectedAmenities.isEmpty ||
           _selectedAmenities.every((a) => facilities.contains(a));
@@ -132,7 +127,6 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
         break;
     }
 
-    // Featured first
     list.sort((a, b) {
       if (a['featured'] == true && b['featured'] != true) return -1;
       if (a['featured'] != true && b['featured'] == true) return 1;
@@ -171,7 +165,6 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
       }
     });
 
-    // Log to admin
     if (wasAdded) {
       try {
         await FirebaseFirestore.instance.collection('activities').add({
@@ -191,13 +184,15 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
       }
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(wasAdded ? '❤️ Liked!' : '💔 Removed'),
-        backgroundColor: wasAdded ? Colors.red : Colors.grey,
-        duration: const Duration(seconds: 1),
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(wasAdded ? '❤️ Liked!' : '💔 Removed'),
+          backgroundColor: wasAdded ? Colors.red : Colors.grey,
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
   }
 
   void _toggleCompare(String hotelId) {
@@ -226,6 +221,9 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -240,305 +238,306 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
             width: double.infinity,
             decoration: const BoxDecoration(
               image: DecorationImage(
-                image: NetworkImage('https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
+                image: NetworkImage(
+                    'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?q=80&w=1000&auto=format&fit=crop'),
                 fit: BoxFit.cover,
               ),
             ),
           ),
           // 2. Dark Overlay
-          Container(
-            color: Colors.black.withOpacity(0.55),
-          ),
-          // 3. Main Content
-          SafeArea(
-            child: Column(
-              children: [
-                // --- CUSTOM TOP HEADER ---
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: width * 0.04,
-                    vertical: height * 0.01,
+          Container(color: Colors.black.withOpacity(0.55)),
+
+          // 3. ⭐ CUSTOM SCROLL VIEW (SliverAppBar inayojificha)
+          CustomScrollView(
+            controller: _scrollController,
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // ═══════ SLIVER APP BAR (INAYOJIFICHA) ═══════
+              SliverAppBar(
+                pinned: false,
+                floating: true,
+                snap: true,
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                leading: IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.4),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.arrow_back_ios,
+                        color: Colors.white, size: 18),
                   ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      Text(
-                        '🏨 Hotels & Lodges',
-                        style: TextStyle(
-                          fontSize: width * 0.05,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(
-                          _showCompare
-                              ? Icons.compare_arrows
-                              : Icons.compare_arrows_outlined,
-                          color: Colors.white,
-                        ),
-                        onPressed: () =>
-                            setState(() => _showCompare = !_showCompare),
-                      ),
-                      IconButton(
-                        icon: Icon(
-                          _isGridView ? Icons.view_list : Icons.grid_view,
-                          color: Colors.white,
-                        ),
-                        onPressed: () => setState(() => _isGridView = !_isGridView),
-                      ),
-                    ],
+                  onPressed: () => Navigator.pop(context),
+                ),
+                title: Text(
+                  '🏨 Hotels & Lodges',
+                  style: TextStyle(
+                    fontSize: width * 0.045,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
+                centerTitle: false,
+                actions: [
+                  IconButton(
+                    icon: Icon(
+                      _showCompare
+                          ? Icons.compare_arrows
+                          : Icons.compare_arrows_outlined,
+                      color: Colors.white,
+                    ),
+                    onPressed: () =>
+                        setState(() => _showCompare = !_showCompare),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      _isGridView ? Icons.view_list : Icons.grid_view,
+                      color: Colors.white,
+                    ),
+                    onPressed: () =>
+                        setState(() => _isGridView = !_isGridView),
+                  ),
+                ],
+              ),
 
-                 // --- REST OF YOUR CONTENT ---
-                Expanded(
-                  child: Column(
+              // ═══════ SEARCH BAR (SLIVER) ═══════
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                      top: height * 0.005, bottom: height * 0.005),
+                  child: AnimatedSearchBackground(
+                    isActive: _isSearchFocused || _searchQuery.isNotEmpty,
+                    child: _buildSearchBar(width, height),
+                  ),
+                ),
+              ),
+
+              // ═══════ SORT + FILTER ═══════
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: width * 0.04, vertical: height * 0.008),
+                  child: Row(
                     children: [
-                      // SEARCH + SORT + FILTER
-                      Container(
-                        padding: EdgeInsets.all(width * 0.04),
-                        child: Column(
-                          children: [
-                            // GLASS SEARCH BAR
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                        color: Colors.white.withOpacity(0.3)),
-                                  ),
-                                  child: TextField(
-                                    controller: _searchController,
-                                    style: const TextStyle(color: Colors.white),
-                                    onChanged: (v) =>
-                                        setState(() => _searchQuery = v),
-                                    decoration: InputDecoration(
-                                      hintText: 'Search hotels worldwide...',
-                                      hintStyle: TextStyle(
-                                          color: Colors.white.withOpacity(0.7)),
-                                      prefixIcon: const Icon(Icons.search,
-                                          color: Colors.white70),
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.symmetric(
-                                          vertical: height * 0.015),
-                                      suffixIcon: _searchQuery.isNotEmpty
-                                          ? IconButton(
-                                        icon: const Icon(Icons.clear,
-                                            color: Colors.white70),
-                                        onPressed: () {
-                                          _searchController.clear();
-                                          setState(() => _searchQuery = '');
-                                        },
-                                      )
-                                          : null,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: height * 0.015),
-                            // Sort + Filter Row
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: [
-                                        _sortChip('recent', '🕐 Recent'),
-                                        _sortChip('price_low', '💰 Price ↑'),
-                                        _sortChip('price_high', '💎 Price ↓'),
-                                        _sortChip('rating', '⭐ Top'),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: _openFilters,
-                                  child: Container(
-                                    padding: EdgeInsets.all(width * 0.03),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.accentGold,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(Icons.tune,
-                                        color: Colors.black, size: 20),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // QUICK CHIPS
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: width * 0.04, vertical: height * 0.01),
+                      Expanded(
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              _quickChip('⭐ Featured', _showFeaturedOnly, () {
-                                setState(() {
-                                  _showFeaturedOnly = !_showFeaturedOnly;
-                                  if (_showFeaturedOnly) {
-                                    _showLikesOnly = false;
-                                    _showTrendingOnly = false;
-                                  }
-                                });
-                              }),
-                              _quickChip('❤️ My Likes (${_likedHotels.length})',
-                                  _showLikesOnly, () {
-                                if (_user == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Please login to see your likes'),
-                                      backgroundColor: Colors.orange,
-                                    ),
-                                  );
-                                  return;
-                                }
-                                setState(() {
-                                  _showLikesOnly = !_showLikesOnly;
-                                  if (_showLikesOnly) {
-                                    _showFeaturedOnly = false;
-                                    _showTrendingOnly = false;
-                                  }
-                                });
-                              }),
-                              _quickChip('🔥 Trending', _showTrendingOnly, () {
-                                setState(() {
-                                  _showTrendingOnly = !_showTrendingOnly;
-                                  if (_showTrendingOnly) {
-                                    _showFeaturedOnly = false;
-                                    _showLikesOnly = false;
-                                  }
-                                });
-                              }),
+                              _sortChip('recent', '🕐 Recent'),
+                              _sortChip('price_low', '💰 Price ↑'),
+                              _sortChip('price_high', '💎 Price ↓'),
+                              _sortChip('rating', '⭐ Top'),
                             ],
                           ),
                         ),
                       ),
-
-                      // CONTENT (StreamBuilder)
-                      Expanded(
-                        child: StreamBuilder<List<Map<String, dynamic>>>(
-                          stream: _service.getHotels(),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return GridView.builder(
-                                padding: EdgeInsets.only(left: width * 0.04, right: width * 0.04, top: width * 0.04, bottom: 80),
-                                gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: width * 0.03,
-                                  mainAxisSpacing: width * 0.03,
-                                  childAspectRatio: 0.68,
-                                ),
-                                itemCount: 4,
-                                itemBuilder: (_, __) => const ShimmerCard(),
-                              );
-                            }
-
-                            final all = snapshot.data ?? [];
-                            final hotels = _filterAndSort(all);
-
-                            if (hotels.isEmpty) return _buildEmptyState(width, height);
-
-                            return Column(
-                              children: [
-                                Padding(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: width * 0.04,
-                                      vertical: height * 0.01),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        '${hotels.length} hotel${hotels.length > 1 ? 's' : ''}',
-                                        style: TextStyle(
-                                          color: Colors.white70,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: width * 0.035,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Expanded(
-                                  child: _isGridView
-                                      ? GridView.builder(
-                                    padding: EdgeInsets.only(left: width * 0.04, right: width * 0.04, top: width * 0.04, bottom: width * 0.04),
-                                    gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      crossAxisSpacing: width * 0.03,
-                                      mainAxisSpacing: width * 0.03,
-                                      childAspectRatio: 0.68,
-                                    ),
-                                    itemCount: hotels.length,
-                                    itemBuilder: (context, i) => HotelGridCard(
-                                      hotel: hotels[i],
-                                      isLiked:
-                                      _likedHotels.contains(hotels[i]['id']),
-                                      showCompare: _showCompare,
-                                      isSelectedForCompare:
-                                      _compareItems.contains(hotels[i]['id']),
-                                      onCompareTap: () =>
-                                          _toggleCompare(hotels[i]['id']),
-                                      onLike: () => _toggleLike(hotels[i]),
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => HotelDetailsScreen(
-                                                hotel: hotels[i]),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  )
-                                      : ListView.builder(
-                                    padding: EdgeInsets.all(width * 0.04),
-                                    itemCount: hotels.length,
-                                    itemBuilder: (context, i) => HotelListCard(
-                                      hotel: hotels[i],
-                                      isLiked:
-                                      _likedHotels.contains(hotels[i]['id']),
-                                      onLike: () => _toggleLike(hotels[i]),
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => HotelDetailsScreen(
-                                                hotel: hotels[i]),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                      GestureDetector(
+                        onTap: _openFilters,
+                        child: Container(
+                          padding: EdgeInsets.all(width * 0.03),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentGold,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.accentGold.withOpacity(0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.tune,
+                              color: Colors.black, size: 20),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+
+              // ═══════ QUICK CHIPS ═══════
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: width * 0.04, vertical: height * 0.005),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _quickChip('⭐ Featured', _showFeaturedOnly, () {
+                          setState(() {
+                            _showFeaturedOnly = !_showFeaturedOnly;
+                            if (_showFeaturedOnly) {
+                              _showLikesOnly = false;
+                              _showTrendingOnly = false;
+                            }
+                          });
+                        }),
+                        _quickChip('❤️ My Likes (${_likedHotels.length})',
+                            _showLikesOnly, () {
+                              if (_user == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                    Text('Please login to see your likes'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                                return;
+                              }
+                              setState(() {
+                                _showLikesOnly = !_showLikesOnly;
+                                if (_showLikesOnly) {
+                                  _showFeaturedOnly = false;
+                                  _showTrendingOnly = false;
+                                }
+                              });
+                            }),
+                        _quickChip('🔥 Trending', _showTrendingOnly, () {
+                          setState(() {
+                            _showTrendingOnly = !_showTrendingOnly;
+                            if (_showTrendingOnly) {
+                              _showFeaturedOnly = false;
+                              _showLikesOnly = false;
+                            }
+                          });
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // ═══════ CONTENT (STREAM) ═══════
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: _service.getHotels(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return SliverPadding(
+                      padding: EdgeInsets.all(width * 0.04),
+                      sliver: SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: width * 0.03,
+                          mainAxisSpacing: width * 0.03,
+                          mainAxisExtent: height * 0.34,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                              (_, __) => const ShimmerCard(),
+                          childCount: 4,
+                        ),
+                      ),
+                    );
+                  }
+
+                  final all = snapshot.data ?? [];
+                  final hotels = _filterAndSort(all);
+
+                  if (hotels.isEmpty) {
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _buildEmptyState(width, height),
+                    );
+                  }
+
+                  return SliverPadding(
+                    padding: EdgeInsets.symmetric(horizontal: width * 0.04),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          // Count
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                  top: height * 0.01,
+                                  bottom: height * 0.01),
+                              child: Text(
+                                '${hotels.length} hotel${hotels.length > 1 ? 's' : ''}',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: width * 0.035,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Grid or List
+                          _isGridView
+                              ? GridView.builder(
+                            shrinkWrap: true,
+                            physics:
+                            const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: width * 0.03,
+                              mainAxisSpacing: width * 0.03,
+                              mainAxisExtent: height * 0.34,
+                            ),
+                            itemCount: hotels.length,
+                            itemBuilder: (context, i) => HotelGridCard(
+                              hotel: hotels[i],
+                              animationIndex: i, // ⭐ STAGGERED
+                              isLiked: _likedHotels
+                                  .contains(hotels[i]['id']),
+                              showCompare: _showCompare,
+                              isSelectedForCompare: _compareItems
+                                  .contains(hotels[i]['id']),
+                              onCompareTap: () =>
+                                  _toggleCompare(hotels[i]['id']),
+                              onLike: () => _toggleLike(hotels[i]),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => HotelDetailsScreen(
+                                      hotel: hotels[i],
+                                      hotelData: {},
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                              : ListView.builder(
+                            shrinkWrap: true,
+                            physics:
+                            const NeverScrollableScrollPhysics(),
+                            itemCount: hotels.length,
+                            itemBuilder: (context, i) => HotelListCard(
+                              hotel: hotels[i],
+                              animationIndex: i, // ⭐ STAGGERED
+                              isLiked: _likedHotels
+                                  .contains(hotels[i]['id']),
+                              onLike: () => _toggleLike(hotels[i]),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => HotelDetailsScreen(
+                                      hotel: hotels[i],
+                                      hotelData: {},
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          SizedBox(height: height * 0.05),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-          // Compare Floating Action Button
+
+          // Compare FAB
           if (_compareItems.length == 2)
             Positioned(
               bottom: 20,
@@ -549,7 +548,8 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                 icon: const Icon(Icons.compare, color: Colors.black),
                 label: Text(
                   'Compare ${_compareItems.length}',
-                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      color: Colors.black, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -558,13 +558,116 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  // ANIMATED SEARCH BAR
+  // ═══════════════════════════════════════════
+  Widget _buildSearchBar(double width, double height) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      margin: EdgeInsets.symmetric(horizontal: width * 0.04),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(_isSearchFocused ? 28 : 16),
+        boxShadow: _isSearchFocused
+            ? [
+          BoxShadow(
+            color: AppColors.accentGold.withOpacity(0.6),
+            blurRadius: 30,
+            spreadRadius: 2,
+            offset: const Offset(0, 10),
+          ),
+        ]
+            : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_isSearchFocused ? 28 : 16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: _isSearchFocused
+                    ? [
+                  AppColors.accentGold.withOpacity(0.15),
+                  Colors.white.withOpacity(0.1),
+                ]
+                    : [
+                  Colors.white.withOpacity(0.15),
+                  Colors.white.withOpacity(0.08),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(_isSearchFocused ? 28 : 16),
+              border: Border.all(
+                color: _isSearchFocused
+                    ? AppColors.accentGold.withOpacity(0.9)
+                    : Colors.white.withOpacity(0.3),
+                width: _isSearchFocused ? 1.8 : 1,
+              ),
+            ),
+            child: Focus(
+              onFocusChange: (hasFocus) {
+                setState(() => _isSearchFocused = hasFocus);
+              },
+              child: TextField(
+                controller: _searchController,
+                style: const TextStyle(color: Colors.white),
+                onChanged: (v) => setState(() => _searchQuery = v),
+                decoration: InputDecoration(
+                  hintText: 'Search hotels worldwide...',
+                  hintStyle: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: width * 0.035,
+                  ),
+                  prefixIcon: AnimatedRotation(
+                    duration: const Duration(milliseconds: 300),
+                    turns: _isSearchFocused ? 0.05 : 0,
+                    child: Icon(
+                      Icons.search,
+                      color: _isSearchFocused
+                          ? AppColors.accentGold
+                          : Colors.white70,
+                    ),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding:
+                  EdgeInsets.symmetric(vertical: height * 0.018),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                    icon: const Icon(Icons.clear, color: Colors.white70),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                  )
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════
+  // SORT CHIP
+  // ═══════════════════════════════════════════
   Widget _sortChip(String value, String label) {
     final isSelected = _sortBy == value;
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
     return GestureDetector(
       onTap: () => setState(() => _sortBy = value),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
         margin: EdgeInsets.only(right: width * 0.02),
         padding: EdgeInsets.symmetric(
             horizontal: width * 0.035, vertical: height * 0.008),
@@ -574,8 +677,18 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
               : Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppColors.accentGold : Colors.white.withOpacity(0.3),
+            color: isSelected
+                ? AppColors.accentGold
+                : Colors.white.withOpacity(0.3),
           ),
+          boxShadow: isSelected
+              ? [
+            BoxShadow(
+              color: AppColors.accentGold.withOpacity(0.5),
+              blurRadius: 12,
+            ),
+          ]
+              : [],
         ),
         child: Text(
           label,
@@ -589,11 +702,15 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  // QUICK CHIP
+  // ═══════════════════════════════════════════
   Widget _quickChip(String label, bool active, VoidCallback onTap) {
     final width = MediaQuery.of(context).size.width;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
         margin: EdgeInsets.only(right: width * 0.02),
         padding: EdgeInsets.symmetric(
             horizontal: width * 0.04, vertical: width * 0.02),
@@ -603,9 +720,19 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
               : Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: active ? AppColors.accentGold : Colors.white.withOpacity(0.3),
+            color: active
+                ? AppColors.accentGold
+                : Colors.white.withOpacity(0.3),
             width: active ? 2 : 1,
           ),
+          boxShadow: active
+              ? [
+            BoxShadow(
+              color: AppColors.accentGold.withOpacity(0.4),
+              blurRadius: 15,
+            ),
+          ]
+              : [],
         ),
         child: Text(
           label,
@@ -619,6 +746,9 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  // EMPTY STATE
+  // ═══════════════════════════════════════════
   Widget _buildEmptyState(double width, double height) {
     return Center(
       child: Container(
@@ -632,7 +762,8 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.hotel_outlined, size: width * 0.15, color: Colors.white70),
+            Icon(Icons.hotel_outlined,
+                size: width * 0.15, color: Colors.white70),
             SizedBox(height: height * 0.03),
             Text(
               _searchQuery.isEmpty ? 'No hotels available' : 'No results found',
@@ -656,6 +787,9 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
     );
   }
 
+  // ═══════════════════════════════════════════
+  // FILTER SHEET
+  // ═══════════════════════════════════════════
   Widget _buildFilterSheet() {
     final width = MediaQuery.of(context).size.width;
     final height = MediaQuery.of(context).size.height;
@@ -679,8 +813,9 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
             filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.75), // DARK GLASS
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                color: Colors.black.withOpacity(0.75),
+                borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
                 border: Border.all(color: Colors.white.withOpacity(0.2)),
               ),
               padding: EdgeInsets.all(width * 0.05),
@@ -689,7 +824,6 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Handle
                     Center(
                       child: Container(
                         width: 40,
@@ -701,8 +835,6 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                       ),
                     ),
                     SizedBox(height: height * 0.02),
-
-                    // Title
                     Row(
                       children: [
                         const Icon(Icons.tune, color: AppColors.accentGold),
@@ -725,14 +857,13 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                             });
                             setState(() {});
                           },
-                          style: TextButton.styleFrom(foregroundColor: AppColors.accentGold),
+                          style: TextButton.styleFrom(
+                              foregroundColor: AppColors.accentGold),
                           child: const Text('Reset'),
                         ),
                       ],
                     ),
                     SizedBox(height: height * 0.02),
-
-                    // Price Range
                     Text('💰 Price Range',
                         style: TextStyle(
                             fontSize: width * 0.04,
@@ -742,7 +873,9 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                     Row(
                       children: [
                         Text('\$${_priceRange.start.toInt()}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
                         Expanded(
                           child: RangeSlider(
                             values: _priceRange,
@@ -761,12 +894,12 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                           ),
                         ),
                         Text('\$${_priceRange.end.toInt()}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white)),
                       ],
                     ),
                     SizedBox(height: height * 0.02),
-
-                    // Rating
                     Text('⭐ Minimum Rating',
                         style: TextStyle(
                             fontSize: width * 0.04,
@@ -812,8 +945,6 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                       }).toList(),
                     ),
                     SizedBox(height: height * 0.02),
-
-                    // Amenities
                     Text('✨ Amenities',
                         style: TextStyle(
                             fontSize: width * 0.04,
@@ -867,8 +998,6 @@ class _HotelsListScreenState extends State<HotelsListScreen> {
                       }).toList(),
                     ),
                     SizedBox(height: height * 0.03),
-
-                    // Apply
                     SizedBox(
                       width: double.infinity,
                       height: 55,

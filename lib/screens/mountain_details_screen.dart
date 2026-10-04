@@ -240,15 +240,28 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                     itemCount: images.length,
                     onPageChanged: (i) =>
                         setState(() => _currentImageIndex = i),
-                    itemBuilder: (context, i) => Image.network(
-                      images[i],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade300,
-                        child: const Icon(Icons.broken_image,
-                            size: 80, color: Colors.white),
-                      ),
-                    ),
+                    itemBuilder: (context, i) => i == 0
+                        ? Hero(
+                            tag: 'mountain_${widget.mountain['id']}',
+                            child: Image.network(
+                              images[i],
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.broken_image,
+                                    size: 80, color: Colors.white),
+                              ),
+                            ),
+                          )
+                        : Image.network(
+                            images[i],
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: Colors.grey.shade300,
+                              child: const Icon(Icons.broken_image,
+                                  size: 80, color: Colors.white),
+                            ),
+                          ),
                   ),
                   Positioned.fill(
                     child: Container(
@@ -643,21 +656,33 @@ class _MountainDetailsScreenState extends State<MountainDetailsScreen> {
                                     () => _currentImageIndex = i),
                             child: Container(
                               margin:
-                              EdgeInsets.only(right: width * 0.02),
+                                  EdgeInsets.only(right: width * 0.02),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: Image.network(
-                                  images[i],
-                                  width: height * 0.1,
-                                  height: height * 0.1,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) =>
-                                      Container(
+                                child: i == 0
+                                    ? Hero(
+                                        tag: 'mountain_gallery_${widget.mountain['id']}',
+                                        child: Image.network(
+                                          images[i],
+                                          width: height * 0.1,
+                                          height: height * 0.1,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            color: Colors.grey.shade200,
+                                            child: const Icon(Icons.broken_image),
+                                          ),
+                                        ),
+                                      )
+                                    : Image.network(
+                                        images[i],
+                                        width: height * 0.1,
+                                        height: height * 0.1,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
                                         color: Colors.grey.shade200,
-                                        child: const Icon(
-                                            Icons.broken_image),
+                                        child: const Icon(Icons.broken_image),
                                       ),
-                                ),
+                                    ),
                               ),
                             ),
                           );

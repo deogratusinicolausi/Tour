@@ -35,7 +35,7 @@ class FirestoreService {
         .collection('destinations')
         .where('status', isEqualTo: 'active')
         .where('featured', isEqualTo: true)
-        .limit(10)
+        .limit(1000)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => {'id': doc.id, ...doc.data()})
