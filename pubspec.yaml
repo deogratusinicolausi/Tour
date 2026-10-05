@@ -67,6 +67,7 @@ dependencies:
   chewie: ^1.15.0
   firebase_messaging: ^16.7.0
   share_plus: ^13.3.0
+  video_thumbnail: ^0.5.3   # kwa thumbnails za video
   fl_chart: ^1.2.0
   flutter_map_cache: ^2.1.0
   dio_cache_interceptor: ^4.0.7

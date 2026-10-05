@@ -15,6 +15,7 @@ class NotificationModel {
   final bool isPushed; // Sound played
   final DateTime? createdAt;
   final DateTime? readAt;
+  final String postId;              // ⭐ HII LAZIMA IWE HAPA
 
   NotificationModel({
     required this.id,
@@ -31,6 +32,7 @@ class NotificationModel {
     this.isPushed = false,
     this.createdAt,
     this.readAt,
+    required this.postId,           // ⭐
   });
 
   factory NotificationModel.fromMap(Map<String, dynamic> map, String id) {
@@ -49,6 +51,7 @@ class NotificationModel {
       isPushed: map['isPushed'] ?? false,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
       readAt: (map['readAt'] as Timestamp?)?.toDate(),
+      postId: map['postId'] ?? '',   // ⭐
     );
   }
 
@@ -67,6 +70,7 @@ class NotificationModel {
       'isPushed': isPushed,
       'createdAt': createdAt ?? FieldValue.serverTimestamp(),
       'readAt': readAt != null ? Timestamp.fromDate(readAt!) : null,
+      'postId': postId,             // ⭐
     };
   }
 

@@ -46,4 +46,38 @@ class CloudinaryService {
       return null;
     }
   }
+
+  // ⭐️ Upload video
+  Future<String?> uploadVideo(File file, {String folder = 'turiva/videos'}) async {
+    try {
+      CloudinaryResponse response = await _cloudinary.uploadFile(
+        CloudinaryFile.fromFile(
+          file.path,
+          resourceType: CloudinaryResourceType.Video,
+          folder: folder,
+        ),
+      );
+      return response.secureUrl;
+    } catch (e) {
+      print('🔥 Cloudinary video upload error: $e');
+      return null;
+    }
+  }
+
+  Future<String?> uploadVideoBytes(Uint8List bytes, {String folder = 'turiva/videos'}) async {
+    try {
+      CloudinaryResponse response = await _cloudinary.uploadFile(
+        CloudinaryFile.fromBytesData(
+          bytes,
+          identifier: 'video_${DateTime.now().millisecondsSinceEpoch}',
+          resourceType: CloudinaryResourceType.Video,
+          folder: folder,
+        ),
+      );
+      return response.secureUrl;
+    } catch (e) {
+      print('🔥 Cloudinary video upload error: $e');
+      return null;
+    }
+  }
 }

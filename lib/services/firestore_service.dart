@@ -1,7 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/feed_post_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  // ═══ TURIVA FEED ═══
+  Stream<List<FeedPostModel>> getFeedPosts({int limit = 20}) {
+    return _firestore
+        .collection('feed_posts')
+        .where('isHidden', isEqualTo: false) // admin ame-hide haionekani
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => FeedPostModel.fromMap(doc.data(), doc.id))
+            .toList());
+  }
 
   // ⭐️ ===== DESTINATIONS =====
 

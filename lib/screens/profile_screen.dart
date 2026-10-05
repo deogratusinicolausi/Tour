@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloudinary_made_easy/cloudinary_made_easy.dart';
+import 'package:turiva/screens/saved_posts_screen.dart';
 import 'package:turiva/screens/travel_memories_screen.dart';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
@@ -691,6 +692,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SavedPostsScreen()),
+              );
+            },
+            child: Container(
+              margin: EdgeInsets.only(bottom: height * 0.01),
+              padding: EdgeInsets.all(width * 0.04),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15), // GLASS
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withOpacity(0.3)), // White border
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(width * 0.03),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentGold.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.bookmark,
+                        color: AppColors.accentGold, size: width * 0.05),
+                  ),
+                  SizedBox(width: width * 0.03),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('🔖 Saved Posts',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: width * 0.038,
+                              color: Colors.white,
+                            )),
+                        Text('View your bookmarked feed posts',
+                            style: TextStyle(
+                              fontSize: width * 0.028,
+                              color: Colors.white70,
+                            )),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: width * 0.035,
+                    color: Colors.white70,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           Text(
             '👤 Profile Settings',
             style: TextStyle(

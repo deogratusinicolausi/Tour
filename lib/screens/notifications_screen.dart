@@ -212,17 +212,21 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _handleAction(NotificationModel notif) {
-    // TODO: Navigate based on actionType
     switch (notif.actionType) {
       case 'open_booking':
-      // Navigate to My Bookings
+        // Example: Navigator.pushNamed(context, '/my_bookings');
+        debugPrint("Navigate to Booking: ${notif.postId}");
         break;
       case 'open_deal':
-      // Navigate to Deal Details
+        // Example: Navigator.pushNamed(context, '/deal_details', arguments: notif.postId);
+        debugPrint("Navigate to Deal: ${notif.postId}");
         break;
       case 'open_review':
-      // Navigate to Review
+        // Example: Navigator.pushNamed(context, '/reviews', arguments: notif.postId);
+        debugPrint("Navigate to Review: ${notif.postId}");
         break;
+      default:
+        debugPrint("No action defined for ${notif.actionType}");
     }
   }
 
