@@ -566,6 +566,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.5"
+  flutter_carousel_widget:
+    dependency: "direct main"
+    description:
+      name: flutter_carousel_widget
+      sha256: a03467e5f53673b559f23240fa38fa5aca166d1d9aed610a906f31285c03b7e3
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.1"
   flutter_compass:
     dependency: "direct main"
     description:

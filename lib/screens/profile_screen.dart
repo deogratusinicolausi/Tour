@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloudinary_made_easy/cloudinary_made_easy.dart';
+import 'package:turiva/screens/travel_memories_screen.dart';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
@@ -775,135 +777,132 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildTravelMemories(double width, double height) {
-    final memories = [
-      {
-        'emoji': '🏔️',
-        'name': 'Kilimanjaro',
-        'date': '2025',
-        'url': 'https://www.tanzaniaparks.go.tz/kilimanjaro',
-        'image': 'https://images.unsplash.com/photo-1544731612-de6a63c6cf1a?w=400',
-      },
-      {
-        'emoji': '🏖️',
-        'name': 'Zanzibar',
-        'date': '2025',
-        'url': 'https://www.zanzibartourism.go.tz',
-        'image': 'https://images.unsplash.com/photo-1532346751886-792675b6c2b5?w=400',
-      },
-      {
-        'emoji': '🦁',
-        'name': 'Serengeti',
-        'date': '2024',
-        'url': 'https://www.serengeti.com',
-        'image': 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=400',
-      },
-      {
-        'emoji': '🌿',
-        'name': 'Ngorongoro',
-        'date': '2024',
-        'url': 'https://www.ngorongorocrater.org',
-        'image': 'https://images.unsplash.com/photo-1587593810167-c8496c6c8e1f?w=400',
-      },
-    ];
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('memories')
+          .where('userId', isEqualTo: user?.uid)
+          .orderBy('date', descending: true)
+          .limit(3)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final docs = snapshot.data?.docs ?? [];
+        final count = docs.length;
 
-    return Container(
-      padding: EdgeInsets.all(width * 0.04),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '📸 Travel Memories',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: width * 0.045,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const NationalParksScreen()),
-                  );
-                },
-                child: Text(
-                  'See All',
-                  style: TextStyle(color: AppColors.accentGold),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: width * 0.02),
-          ...memories.map((memory) {
-            return GestureDetector(
-              onTap: () async {
-                final Uri url = Uri.parse(memory['url']!);
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                }
-              },
-              child: Container(
-                margin: EdgeInsets.only(bottom: height * 0.015),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  image: DecorationImage(
-                    image: NetworkImage(memory['image']!),
-                    fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(
-                      Colors.black.withOpacity(0.5),
-                      BlendMode.darken,
-                    ),
-                  ),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(width * 0.04),
-                  child: Row(
-                    children: [
-                      Text(memory['emoji']!, style: TextStyle(fontSize: width * 0.07)),
-                      SizedBox(width: width * 0.03),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              memory['name']!,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: width * 0.04,
-                              ),
-                            ),
-                            Text(
-                              memory['date']!,
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: width * 0.03,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        color: Colors.white,
-                        size: width * 0.04,
-                      ),
-                    ],
-                  ),
-                ),
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const TravelMemoriesScreen(),
               ),
             );
-          }),
-        ],
-      ),
+          },
+          child: Container(
+            padding: EdgeInsets.all(width * 0.04),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text('📸', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Travel Memories',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            count > 0
+                                ? '$count ${count == 1 ? 'memory' : 'memories'}'
+                                : 'Start capturing your journey',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentGold,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Open',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(Icons.arrow_forward,
+                              color: Colors.black, size: 14),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (docs.isNotEmpty) ...[
+                  SizedBox(height: height * 0.02),
+                  SizedBox(
+                    height: width * 0.22,
+                    child: Row(
+                      children: docs.take(3).map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final url = (data['thumbnailUrl'] ??
+                                (data['mediaUrls'] as List?)?.first ??
+                                '') as String;
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: url.isNotEmpty
+                                  ? Image.network(
+                                      url,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        color: Colors.white10,
+                                        child: const Icon(Icons.image,
+                                            color: Colors.white30),
+                                      ),
+                                    )
+                                  : Container(
+                                      color: Colors.white10,
+                                      child: const Icon(Icons.image,
+                                          color: Colors.white30),
+                                    ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
