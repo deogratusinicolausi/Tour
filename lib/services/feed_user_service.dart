@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/cupertino.dart';
 import 'cloudinary_service.dart';
 import '../models/feed_post_model.dart';
 import 'notification_service.dart';
@@ -130,29 +131,33 @@ class FeedUserService {
       final postRef = _firestore.collection('feed_posts').doc(postId);
       final likeRef = postRef.collection('likes').doc(user.uid);
 
-      // Get post info for notification
+      // ⭐ Check halisi kwenye Firestore (sio cache)
+      final likeDoc = await likeRef.get();
+      final reallyLiked = likeDoc.exists;
+
       final postDoc = await postRef.get();
       if (!postDoc.exists) return;
       final postData = postDoc.data()!;
       final postOwnerId = postData['userId'] as String? ?? '';
+      final currentCount = (postData['likesCount'] ?? 0) as int;
 
-      if (currentlyLiked) {
-        // Unlike
+      if (reallyLiked) {
+        // ⭐ UNLIKE
         await likeRef.delete();
-        await postRef.update({
-          'likesCount': FieldValue.increment(-1),
-        });
+        final newCount = (currentCount - 1).clamp(0, 999999); // ⭐ Hakuna negative
+        await postRef.update({'likesCount': newCount});
+        await trackLikedPost(postId, false);
       } else {
-        // Like
+        // ⭐ LIKE
         await likeRef.set({
           'userId': user.uid,
           'createdAt': FieldValue.serverTimestamp(),
         });
-        await postRef.update({
-          'likesCount': FieldValue.increment(1),
-        });
+        final newCount = currentCount + 1;
+        await postRef.update({'likesCount': newCount});
+        await trackLikedPost(postId, true);
 
-        // ⭐ Send notification to post owner
+        // Notification
         await NotificationService().sendNotification(
           toUserId: postOwnerId,
           fromUserId: user.uid,
@@ -467,5 +472,210 @@ class FeedUserService {
       print('🔥 deleteOwnPost: $e');
       return false;
     }
+  }
+
+  // ═══════════════════════════════════════════
+  // ⭐ VIEWS — track nani ameview post
+  // ═══════════════════════════════════════════
+  Future<void> recordView(String postId) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final postRef = _firestore.collection('feed_posts').doc(postId);
+      final viewRef = postRef.collection('views').doc(user.uid);
+
+      // ⭐ Check kama user ameshaview post hii
+      final existingView = await viewRef.get();
+
+      if (existingView.exists) {
+        // User ameshaview — update lastViewedAt tu (HAKUNA increment)
+        await viewRef.update({
+          'lastViewedAt': FieldValue.serverTimestamp(),
+          'viewCount': FieldValue.increment(1), // Hii ni kwa admin analytics pekee
+        });
+        debugPrint('📊 User ameshaview post hii — viewsCount haiongezeki');
+        return; // ⭐ HATUENDELEI — viewsCount inabaki
+      }
+
+      // ⭐ User HAIJAVIEW — ongeza view
+      await viewRef.set({
+        'userId': user.uid,
+        'viewedAt': FieldValue.serverTimestamp(),
+        'lastViewedAt': FieldValue.serverTimestamp(),
+        'viewCount': 1,
+      });
+
+      // ⭐ Increment viewsCount kwenye post (mara moja tu)
+      await postRef.update({
+        'viewsCount': FieldValue.increment(1),
+      });
+
+      // Track kwenye user — kwa recommendations
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('viewed_posts')
+          .doc(postId)
+          .set({
+        'postId': postId,
+        'lastViewedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      debugPrint('✅ User ameviw post kwa mara ya kwanza — viewsCount +1');
+    } catch (e) {
+      print('🔥 recordView: $e');
+    }
+  }
+
+  // ⭐ Check kama user ameshaview post hii
+  Stream<bool> hasViewed(String postId) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return Stream.value(false);
+
+    return _firestore
+        .collection('feed_posts')
+        .doc(postId)
+        .collection('views')
+        .doc(uid)
+        .snapshots()
+        .map((doc) => doc.exists);
+  }
+
+  // ═══════════════════════════════════════════
+  // ⭐ LIKED POSTS — kwa recommendations
+  // ═══════════════════════════════════════════
+  Future<void> trackLikedPost(String postId, bool liked) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final ref = _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('liked_posts')
+          .doc(postId);
+
+      if (liked) {
+        await ref.set({
+          'postId': postId,
+          'likedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        await ref.delete();
+      }
+    } catch (e) {
+      print('🔥 trackLikedPost: $e');
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  // ⭐ TRENDING POSTS — kwa "Trending" tab
+  // ═══════════════════════════════════════════
+  Stream<List<FeedPostModel>> getTrendingPosts({int limit = 20}) {
+    return _firestore
+        .collection('feed_posts')
+        .where('isHidden', isEqualTo: false)
+        .orderBy('likesCount', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((s) => s.docs
+            .map((d) => FeedPostModel.fromMap(d.data(), d.id))
+            .toList());
+  }
+
+  // ═══════════════════════════════════════════
+  // ⭐ RECOMMENDED POSTS — based on user's liked/viewed
+  // ═══════════════════════════════════════════
+  Future<List<FeedPostModel>> getRecommendedPosts({int limit = 20}) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return [];
+
+      // Get user's liked posts
+      final likedSnap = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('liked_posts')
+          .limit(20)
+          .get();
+
+      final likedIds = likedSnap.docs.map((d) => d.id).toList();
+
+      // Get posts from users that user liked
+      final likedPostDocs = await Future.wait(
+        likedIds.map((id) => _firestore.collection('feed_posts').doc(id).get()),
+      );
+
+      final likedUserIds = <String>{};
+      for (var doc in likedPostDocs) {
+        if (doc.exists) {
+          likedUserIds.add(doc.data()?['userId'] ?? '');
+        }
+      }
+      likedUserIds.remove('');
+
+      if (likedUserIds.isEmpty) return [];
+
+      // Get posts from those users
+      final postsSnap = await _firestore
+          .collection('feed_posts')
+          .where('userId', whereIn: likedUserIds.take(10).toList())
+          .where('isHidden', isEqualTo: false)
+          .limit(limit)
+          .get();
+
+      return postsSnap.docs
+          .map((d) => FeedPostModel.fromMap(d.data(), d.id))
+          .toList();
+    } catch (e) {
+      print('🔥 getRecommendedPosts: $e');
+      return [];
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  // ⭐ USER POSTS — kwa profile
+  // ═══════════════════════════════════════════
+  Stream<List<FeedPostModel>> getUserPosts(String userId) {
+    return _firestore
+        .collection('feed_posts')
+        .where('userId', isEqualTo: userId)
+        .where('isHidden', isEqualTo: false)
+        .limit(100)
+        .snapshots()
+        .map((s) {
+      final list = s.docs
+          .map((d) => FeedPostModel.fromMap(d.data(), d.id))
+          .toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
+  }
+
+  // ═══════════════════════════════════════════
+  // ⭐ USER LIKED POSTS — kwa profile
+  // ═══════════════════════════════════════════
+  Stream<List<FeedPostModel>> getUserLikedPosts(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('liked_posts')
+        .limit(50)
+        .snapshots()
+        .asyncMap((snap) async {
+      final ids = snap.docs.map((d) => d.id).toList();
+      if (ids.isEmpty) return <FeedPostModel>[];
+
+      final posts = <FeedPostModel>[];
+      for (final id in ids) {
+        final doc = await _firestore.collection('feed_posts').doc(id).get();
+        if (doc.exists) {
+          posts.add(FeedPostModel.fromMap(
+              doc.data() as Map<String, dynamic>, doc.id));
+        }
+      }
+      return posts;
+    });
   }
 }

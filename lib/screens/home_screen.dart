@@ -14,6 +14,7 @@ import 'create_post_screen.dart';
 import '../services/coupon_service.dart';
 import '../widgets/coupon_card_user.dart';
 import '../utils/colors.dart';
+import 'feed_post_viewer_screen.dart';
 import 'hotels_list_screen.dart';
 import 'profile_screen.dart';
 import 'explore_all_screen.dart';
@@ -26,6 +27,8 @@ import 'culture_list_screen.dart';
 import 'food_list_screen.dart';
 import 'deals_list_screen.dart';
 import 'notifications_screen.dart';
+import '../widgets/post_options_sheet.dart';
+import 'package:share_plus/share_plus.dart';
 import 'coupons_screen.dart';
 import 'search_screen.dart';
 import 'global_feed_screen.dart';
@@ -850,7 +853,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // ═══ Feed List ═══
         SizedBox(
-          height: width * 1.2,
+          height: width * 0.85,
           child: StreamBuilder<List<FeedPostModel>>(
             stream: FeedUserService().getFeed(limit: 3),
             builder: (context, snapshot) {
@@ -891,102 +894,98 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildFeedCard(FeedPostModel post, double width, double height) {
     final feedService = FeedUserService();
-    final cardWidth = width * 0.72;      // ⭐ Wider card
-    final cardHeight = cardWidth * 1.5;  // ⭐ Taller (4:6 ratio)
+    final cardWidth = width * 0.5;
+    final cardHeight = cardWidth * 1.35;
 
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => FeedPostDetailsScreen(post: post),
+            builder: (_) => FeedPostViewerScreen(post: post),
           ),
         );
       },
+      behavior: HitTestBehavior.opaque,
       child: Container(
         width: cardWidth,
         height: cardHeight,
-        margin: EdgeInsets.only(right: width * 0.035),
+        margin: EdgeInsets.only(right: width * 0.025),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.35),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ═══════════════════════════════════════
-              // 1️⃣ BACKGROUND IMAGE / VIDEO
-              // ═══════════════════════════════════════
-              post.thumbnailUrl.isNotEmpty
+              // ═══ IMAGE / VIDEO ═══
+              post.imageUrl.isNotEmpty
                   ? Image.network(
-                post.thumbnailUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return Container(
-                    color: Colors.grey.shade900,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.accentGold,
-                        strokeWidth: 2,
+                      post.imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          color: const Color(0xFF0a0a1a),
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.accentGold,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => Container(
+                        color: const Color(0xFF0a0a1a),
+                        child: const Icon(
+                          Icons.broken_image,
+                          color: Colors.white24,
+                          size: 40,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      color: const Color(0xFF0a0a1a),
+                      child: const Icon(
+                        Icons.image,
+                        color: Colors.white24,
+                        size: 40,
                       ),
                     ),
-                  );
-                },
-                errorBuilder: (_, __, ___) => Container(
-                  color: Colors.grey.shade900,
-                  child: const Icon(
-                    Icons.broken_image,
-                    color: Colors.white54,
-                    size: 40,
-                  ),
-                ),
-              )
-                  : Container(
-                color: Colors.grey.shade900,
-                child: const Icon(
-                  Icons.image,
-                  color: Colors.white54,
-                  size: 40,
-                ),
-              ),
 
-              // ═══════════════════════════════════════
-              // 2️⃣ DARK GRADIENT OVERLAY (for readability)
-              // ═══════════════════════════════════════
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.5),
-                      Colors.transparent,
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.85),
-                    ],
-                    stops: const [0.0, 0.3, 0.55, 1.0],
+              // ═══ GRADIENT ═══
+              IgnorePointer(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.7),
+                      ],
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
                   ),
                 ),
               ),
 
-              // ═══════════════════════════════════════
-              // 3️⃣ VIDEO PLAY ICON (center, elegant)
-              // ═══════════════════════════════════════
+              // ═══ VIDEO PLAY ICON ═══
               if (post.isVideo)
                 Center(
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(width * 0.02),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withOpacity(0.5),
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: Colors.white.withOpacity(0.5),
@@ -995,263 +994,234 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     child: Icon(
                       Icons.play_arrow_rounded,
-                      size: width * 0.1,
                       color: Colors.white,
+                      size: width * 0.08,
                     ),
                   ),
                 ),
 
-              // ═══════════════════════════════════════
-              // 4️⃣ TOP SECTION — User info + Featured badge
-              // ═══════════════════════════════════════
+              // ═══ 3-DOTS MENU ═══
               Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: Padding(
-                  padding: EdgeInsets.all(width * 0.035),
-                  child: Row(
-                    children: [
-                      // User avatar — wrapped in GestureDetector for profile navigation
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ProfileScreen(),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: AppColors.goldGradient,
-                          ),
-                          child: CircleAvatar(
-                            radius: width * 0.045,
-                            backgroundColor: Colors.black26,
-                            backgroundImage: post.userAvatar.isNotEmpty
-                                ? NetworkImage(post.userAvatar)
-                                : null,
-                            child: post.userAvatar.isEmpty
-                                ? Text(
-                                    post.userName.isNotEmpty
-                                        ? post.userName[0].toUpperCase()
-                                        : '?',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: width * 0.035,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                        ),
+                top: width * 0.025,
+                right: width * 0.025,
+                child: GestureDetector(
+                  onTap: () => PostOptionsSheet.show(context, post),
+                  child: Container(
+                    padding: EdgeInsets.all(width * 0.015),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
                       ),
-                      SizedBox(width: width * 0.025),
-
-                      // Name + location
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    post.userName,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: width * 0.035,
-                                      fontWeight: FontWeight.bold,
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black.withOpacity(0.5),
-                                          blurRadius: 4,
-                                        ),
-                                      ],
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                SizedBox(width: width * 0.01),
-                                // Verified check
-                                Icon(
-                                  Icons.verified,
-                                  color: AppColors.accentGold,
-                                  size: width * 0.03,
-                                ),
-                              ],
-                            ),
-                            if (post.location.isNotEmpty) ...[
-                              SizedBox(height: height * 0.003),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.location_on,
-                                    color: Colors.white.withOpacity(0.9),
-                                    size: width * 0.03,
-                                  ),
-                                  SizedBox(width: width * 0.005),
-                                  Flexible(
-                                    child: Text(
-                                      post.location,
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.9),
-                                        fontSize: width * 0.028,
-                                        fontWeight: FontWeight.w500,
-                                        shadows: [
-                                          Shadow(
-                                            color:
-                                            Colors.black.withOpacity(0.5),
-                                            blurRadius: 4,
-                                          ),
-                                        ],
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-
-                      // ⭐ More options
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.3),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.more_horiz,
-                          color: Colors.white,
-                          size: width * 0.05,
-                        ),
-                      ),
-                    ],
+                    ),
+                    child: Icon(
+                      Icons.more_horiz,
+                      color: Colors.white,
+                      size: width * 0.045,
+                    ),
                   ),
                 ),
               ),
 
-              // ═══════════════════════════════════════
-              // 5️⃣ BOTTOM SECTION — Caption + Actions
-              // ═══════════════════════════════════════
+              // ═══ BOTTOM INFO ═══
               Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
                 child: Padding(
-                  padding: EdgeInsets.all(width * 0.035),
+                  padding: EdgeInsets.all(width * 0.025),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Caption
-                      if (post.caption.isNotEmpty)
-                        Text(
-                          post.caption,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: width * 0.035,
-                            fontWeight: FontWeight.w500,
-                            height: 1.3,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.6),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      SizedBox(height: height * 0.012),
-
-                      // ═══ Actions Row — Pill buttons ═══
+                      // User
                       Row(
                         children: [
-                          // ⭐ LIKE PILL
-                          StreamBuilder<bool>(
-                            stream: feedService.isLiked(post.id),
+                          Container(
+                            padding: const EdgeInsets.all(1.5),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppColors.goldGradient,
+                            ),
+                            child: CircleAvatar(
+                              radius: width * 0.032,
+                              backgroundColor: Colors.black,
+                              backgroundImage: post.userAvatar.isNotEmpty
+                                  ? NetworkImage(post.userAvatar)
+                                  : null,
+                              child: post.userAvatar.isEmpty
+                                  ? Text(
+                                      post.userName.isNotEmpty
+                                          ? post.userName[0].toUpperCase()
+                                          : '?',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: width * 0.028,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          SizedBox(width: width * 0.02),
+                          Expanded(
+                            child: Text(
+                              post.userName,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: width * 0.028,
+                                fontWeight: FontWeight.bold,
+                                shadows: const [
+                                  Shadow(color: Colors.black, blurRadius: 4),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: width * 0.01),
+
+                      // Location
+                      if (post.location.isNotEmpty)
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on,
+                              color: AppColors.accentGold,
+                              size: width * 0.026,
+                            ),
+                            SizedBox(width: width * 0.005),
+                            Flexible(
+                              child: Text(
+                                post.location,
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: width * 0.024,
+                                  shadows: const [
+                                    Shadow(color: Colors.black, blurRadius: 4),
+                                  ],
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      SizedBox(height: width * 0.015),
+
+                      // ═══ ACTIONS ROW ═══
+                      Row(
+                        children: [
+                          // ⭐ LIKE — real-time
+                          StreamBuilder<FeedPostModel?>(
+                            stream: feedService.getPost(post.id),
                             builder: (context, snap) {
-                              final liked = snap.data ?? false;
-                              return _buildActionPill(
-                                icon: liked
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                label: '${post.likesCount}',
-                                color: liked
-                                    ? Colors.redAccent
-                                    : Colors.white,
-                                filled: liked,
-                                width: width,
-                                onTap: () =>
-                                    feedService.toggleLike(post.id, liked),
+                              final currentPost = snap.data ?? post;
+                              return StreamBuilder<bool>(
+                                stream: feedService.isLiked(post.id),
+                                builder: (context, likeSnap) {
+                                  final liked = likeSnap.data ?? false;
+                                  return GestureDetector(
+                                    onTap: () => feedService.toggleLike(
+                                        post.id, liked),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          liked
+                                              ? Icons.favorite
+                                              : Icons.favorite_border,
+                                          color: liked
+                                              ? Colors.redAccent
+                                              : Colors.white,
+                                          size: width * 0.042,
+                                        ),
+                                        SizedBox(width: width * 0.005),
+                                        Text(
+                                          '${currentPost.likesCount}',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: width * 0.028,
+                                            fontWeight: FontWeight.bold,
+                                            shadows: const [
+                                              Shadow(
+                                                  color: Colors.black,
+                                                  blurRadius: 4),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                               );
                             },
                           ),
-                          SizedBox(width: width * 0.02),
+                          SizedBox(width: width * 0.04),
 
-                          // ⭐ COMMENT PILL
-                          _buildActionPill(
-                            icon: Icons.chat_bubble_outline,
-                            label: '${post.commentsCount}',
-                            color: Colors.white,
-                            filled: false,
-                            width: width,
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    FeedPostDetailsScreen(post: post),
-                              ),
+                          // ⭐ COMMENT — opens viewer
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      FeedPostViewerScreen(post: post),
+                                ),
+                              );
+                            },
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.chat_bubble_outline,
+                                  color: Colors.white,
+                                  size: width * 0.042,
+                                ),
+                                SizedBox(width: width * 0.005),
+                                Text(
+                                  '${post.commentsCount}',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: width * 0.028,
+                                    fontWeight: FontWeight.bold,
+                                    shadows: const [
+                                      Shadow(
+                                          color: Colors.black, blurRadius: 4),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
 
                           const Spacer(),
 
-                          // ⭐ SAVE PILL
-                          StreamBuilder<bool>(
-                            stream: feedService.isSaved(post.id),
-                            builder: (context, snap) {
-                              final saved = snap.data ?? false;
-                              return _buildIconPill(
-                                icon: saved
-                                    ? Icons.bookmark
-                                    : Icons.bookmark_border,
-                                color: saved
-                                    ? AppColors.accentGold
-                                    : Colors.white,
-                                filled: saved,
-                                width: width,
-                                onTap: () =>
-                                    feedService.toggleSave(post.id, saved),
-                              );
-                            },
-                          ),
-                          SizedBox(width: width * 0.02),
+                          // ⭐ SHARE
+                          GestureDetector(
+                            onTap: () async {
+                              try {
+                                final shareText = '''
+🦁 Check out this amazing post on TURIVA!
+📍 ${post.location}
+👤 ${post.userName}
 
-                          // ⭐ SHARE PILL
-                          _buildIconPill(
-                            icon: Icons.share_outlined,
-                            color: Colors.white,
-                            filled: false,
-                            width: width,
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('📤 Share coming soon'),
-                                  duration: Duration(seconds: 1),
-                                ),
-                              );
+${post.caption}
+
+Download TURIVA app: https://turiva.app
+''';
+                                await Share.share(shareText);
+                                await feedService.sharePost(post.id);
+                              } catch (e) {
+                                debugPrint('🔥 Share error: $e');
+                              }
                             },
+                            child: Icon(
+                              Icons.share_outlined,
+                            color: Colors.white,
+                              size: width * 0.042,
+                            ),
                           ),
                         ],
                       ),
@@ -1281,13 +1251,13 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: width * 0.028,
-          vertical: width * 0.018,
+          horizontal: width * 0.02,
+          vertical: width * 0.015,
         ),
         decoration: BoxDecoration(
           color: filled
               ? color.withOpacity(0.2)
-              : Colors.black.withOpacity(0.35),
+              : Colors.black.withOpacity(0.4),
           borderRadius: BorderRadius.circular(50),
           border: Border.all(
             color: filled
@@ -1299,14 +1269,16 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: width * 0.042),
-            SizedBox(width: width * 0.012),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: width * 0.03,
-                fontWeight: FontWeight.bold,
+            Icon(icon, color: color, size: width * 0.035),
+            SizedBox(width: width * 0.01),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: width * 0.028,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -1341,7 +1313,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 1,
           ),
         ),
-        child: Icon(icon, color: color, size: width * 0.045),
+        child: Icon(icon, color: color, size: width * 0.038),
       ),
     );
   }

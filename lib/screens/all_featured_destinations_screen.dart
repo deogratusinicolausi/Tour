@@ -2,7 +2,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/firestore_service.dart';
 import '../utils/colors.dart';
-import '../widgets/full_screen_image_viewer.dart';
 import 'destination_details_screen.dart';
 
 class AllFeaturedDestinationsScreen extends StatefulWidget {
@@ -25,17 +24,19 @@ class _AllFeaturedDestinationsScreenState
 
   // ===== SCROLL =====
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
 
   // ⭐ ANIMATION
   late AnimationController _bgController;
 
+  // ⭐ STREAM (cached)
+  late Stream<List<Map<String, dynamic>>> _destinationsStream;
+
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(() {
-      _scrollOffset.value = _scrollController.offset;
-    });
+
+    // ⭐ Cache stream — inaundwa MARA MOJA tu
+    _destinationsStream = service.getFeaturedDestinations();
 
     _bgController = AnimationController(
       duration: const Duration(seconds: 25),
@@ -45,7 +46,6 @@ class _AllFeaturedDestinationsScreenState
 
   @override
   void dispose() {
-    _scrollOffset.dispose();
     _scrollController.dispose();
     _bgController.dispose();
     super.dispose();
@@ -103,9 +103,7 @@ class _AllFeaturedDestinationsScreenState
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ═══════════════════════════════════════
-          // 1️⃣ ANIMATED BACKGROUND
-          // ═══════════════════════════════════════
+          // ═══ ANIMATED BACKGROUND ═══
           AnimatedBuilder(
             animation: _bgController,
             builder: (context, _) {
@@ -134,7 +132,7 @@ class _AllFeaturedDestinationsScreenState
             },
           ),
 
-          // Background image overlay
+          // Background image
           Positioned.fill(
             child: Opacity(
               opacity: 0.15,
@@ -146,9 +144,7 @@ class _AllFeaturedDestinationsScreenState
             ),
           ),
 
-          // ═══════════════════════════════════════
-          // 2️⃣ GLOW ORBS
-          // ═══════════════════════════════════════
+          // ═══ GLOW ORBS ═══
           AnimatedBuilder(
             animation: _bgController,
             builder: (context, _) {
@@ -175,31 +171,32 @@ class _AllFeaturedDestinationsScreenState
             },
           ),
 
-          // ═══════════════════════════════════════
-          // 3️⃣ MAIN CONTENT
-          // ═══════════════════════════════════════
+          // ═══ MAIN CONTENT ═══
           SafeArea(
             child: Column(
               children: [
                 _buildGlassAppBar(context, width),
                 Expanded(
                   child: StreamBuilder<List<Map<String, dynamic>>>(
-                    stream: service.getFeaturedDestinations(),
+                    stream: _destinationsStream,
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return _buildLoadingState(width);
-                      }
+                      // ⭐ HAKUNA LOADING — onyesha content mara moja
+                      final destinations = snapshot.data ?? [];
+                      final filtered = _filterAndSort(destinations);
 
+                      // ⭐ Kama bado hakuna data na kuna error
                       if (snapshot.hasError) {
                         return _buildErrorState(snapshot.error, width);
                       }
 
-                      final destinations = snapshot.data ?? [];
-                      final filtered = _filterAndSort(destinations);
-
-                      if (destinations.isEmpty) {
+                      // ⭐ Kama hakuna destinations
+                      if (destinations.isEmpty && snapshot.connectionState == ConnectionState.done) {
                         return _buildEmptyState(width, height);
+                      }
+
+                      // ⭐ Kama bado hakuna data — onyesha scroll view tupu
+                      if (destinations.isEmpty) {
+                        return const SizedBox.shrink();
                       }
 
                       return RefreshIndicator(
@@ -300,9 +297,7 @@ class _AllFeaturedDestinationsScreenState
     );
   }
 
-  // ═══════════════════════════════════════
-  // GLOW ORB
-  // ═══════════════════════════════════════
+  // ═══ GLOW ORB ═══
   Widget _glowOrb(double size, Color color) {
     return Container(
       width: size,
@@ -316,162 +311,104 @@ class _AllFeaturedDestinationsScreenState
     );
   }
 
-  // ═══════════════════════════════════════
-  // LOADING
-  // ═══════════════════════════════════════
-  Widget _buildLoadingState(double width) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(width * 0.08),
+  // ═══ GLASS APP BAR (bila scroll listener) ═══
+  Widget _buildGlassAppBar(BuildContext context, double width) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: width * 0.03,
+        vertical: width * 0.02,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: width * 0.02,
+              vertical: width * 0.02,
+            ),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  AppColors.accentGold.withOpacity(0.3),
-                  Colors.transparent,
-                ],
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.3),
+                width: 1.5,
               ),
             ),
-            child: const CircularProgressIndicator(
-              color: AppColors.accentGold,
-              strokeWidth: 3,
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.25),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+                SizedBox(width: width * 0.03),
+                Expanded(
+                  child: ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [
+                        AppColors.accentGold,
+                        Colors.orange.shade300,
+                      ],
+                    ).createShader(bounds),
+                    child: const Text(
+                      'Featured Destinations',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _isGridView = !_isGridView),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.25),
+                      ),
+                    ),
+                    child: AnimatedRotation(
+                      turns: _isGridView ? 0 : 0.5,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: Icon(
+                        _isGridView ? Icons.view_list : Icons.grid_view,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: width * 0.06),
-          ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [AppColors.accentGold, Colors.orange.shade300],
-            ).createShader(bounds),
-            child: Text(
-              'Loading Destinations...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: width * 0.04,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  // ═══════════════════════════════════════
-  // GLASS APP BAR
-  // ═══════════════════════════════════════
-  Widget _buildGlassAppBar(BuildContext context, double width) {
-    return ValueListenableBuilder<double>(
-      valueListenable: _scrollOffset,
-      builder: (context, offset, _) {
-        final opacity = (offset / 200).clamp(0.0, 1.0);
-
-        return Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: width * 0.03,
-            vertical: width * 0.02,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                  sigmaX: 12 + opacity * 8, sigmaY: 12 + opacity * 8),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: EdgeInsets.symmetric(
-                  horizontal: width * 0.02,
-                  vertical: width * 0.02,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1 + opacity * 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.25 + opacity * 0.2),
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.25),
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: width * 0.03),
-                    Expanded(
-                      child: ShaderMask(
-                        shaderCallback: (bounds) => LinearGradient(
-                          colors: [
-                            AppColors.accentGold,
-                            Colors.orange.shade300,
-                          ],
-                        ).createShader(bounds),
-                        child: const Text(
-                          'Featured Destinations',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => setState(() => _isGridView = !_isGridView),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.25),
-                          ),
-                        ),
-                        child: AnimatedRotation(
-                          turns: _isGridView ? 0 : 0.5,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                          child: Icon(
-                            _isGridView ? Icons.view_list : Icons.grid_view,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: width * 0.01),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // ═══════════════════════════════════════
-  // STATS
-  // ═══════════════════════════════════════
+  // ═══ STATS ═══
   Widget _buildStatsHeader(
       List<Map<String, dynamic>> destinations, double width) {
     final total = destinations.length;
@@ -595,9 +532,7 @@ class _AllFeaturedDestinationsScreenState
     );
   }
 
-  // ═══════════════════════════════════════
-  // FILTER CHIPS
-  // ═══════════════════════════════════════
+  // ═══ FILTER CHIPS ═══
   Widget _buildFilterChips(double width, double height,
       List<Map<String, dynamic>> destinations) {
     final countries = _getCountries(destinations);
@@ -695,9 +630,7 @@ class _AllFeaturedDestinationsScreenState
     );
   }
 
-  // ═══════════════════════════════════════
-  // EMPTY
-  // ═══════════════════════════════════════
+  // ═══ EMPTY ═══
   Widget _buildEmptyState(double width, double height) {
     return Center(
       child: Padding(
@@ -752,9 +685,7 @@ class _AllFeaturedDestinationsScreenState
     );
   }
 
-  // ═══════════════════════════════════════
-  // ERROR
-  // ═══════════════════════════════════════
+  // ═══ ERROR ═══
   Widget _buildErrorState(Object? error, double width) {
     return Center(
       child: Padding(
@@ -799,7 +730,7 @@ class _AllFeaturedDestinationsScreenState
 }
 
 // ═══════════════════════════════════════════════════════════
-// ⭐ COSMIC FEATURED CARD (Grid)
+// COSMIC FEATURED CARD (Grid)
 // ═══════════════════════════════════════════════════════════
 class _CosmicFeaturedCard extends StatefulWidget {
   final Map<String, dynamic> dest;
@@ -836,10 +767,7 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) => setState(() => _isPressed = false),
       onTapCancel: () => setState(() => _isPressed = false),
-      onTap: () {
-        debugPrint('🎯 CARD TAPPED: ${dest['name']}');
-        widget.onTap();
-      },
+      onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedScale(
         scale: _isPressed ? 0.95 : 1.0,
@@ -848,13 +776,9 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () {
-              debugPrint('🎯 INKWELL TAPPED: ${dest['name']}');
-              widget.onTap();
-            },
+            onTap: widget.onTap,
             borderRadius: BorderRadius.circular(20),
             splashColor: AppColors.accentGold.withOpacity(0.3),
-            highlightColor: AppColors.accentGold.withOpacity(0.1),
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
@@ -864,11 +788,6 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
-                  BoxShadow(
-                    color: AppColors.accentGold.withOpacity(0.1),
-                    blurRadius: 30,
-                    spreadRadius: 1,
-                  ),
                 ],
               ),
               child: ClipRRect(
@@ -876,7 +795,6 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // IMAGE
                     if (imageUrl.isNotEmpty)
                       Image.network(
                         imageUrl,
@@ -912,7 +830,6 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                         ),
                       ),
 
-                    // GRADIENT OVERLAY
                     IgnorePointer(
                       child: Container(
                         decoration: BoxDecoration(
@@ -931,7 +848,7 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                       ),
                     ),
 
-                    // RANK BADGE
+                    // Rank badge
                     if (widget.rank > 0)
                       Positioned(
                         top: 10,
@@ -951,40 +868,20 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                                     : [const Color(0xFFCD7F32), const Color(0xFF8B4513)],
                               ),
                               borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.accentGold.withOpacity(0.6),
-                                  blurRadius: 15,
-                                  spreadRadius: 1,
-                                ),
-                              ],
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  widget.rank == 1
-                                      ? Icons.emoji_events
-                                      : Icons.military_tech,
-                                  color: Colors.black,
-                                  size: width * 0.032,
-                                ),
-                                SizedBox(width: width * 0.01),
-                                Text(
-                                  '#${widget.rank}',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: width * 0.03,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              '#${widget.rank}',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: width * 0.03,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
                       ),
 
-                    // FEATURED BADGE
+                    // Featured badge
                     if (dest['featured'] == true && widget.rank == 0)
                       Positioned(
                         top: 10,
@@ -998,12 +895,6 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                             decoration: BoxDecoration(
                               gradient: AppColors.goldGradient,
                               borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.accentGold.withOpacity(0.6),
-                                  blurRadius: 12,
-                                ),
-                              ],
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1017,7 +908,6 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                                     fontSize: width * 0.022,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black,
-                                    letterSpacing: 0.5,
                                   ),
                                 ),
                               ],
@@ -1026,7 +916,7 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                         ),
                       ),
 
-                    // VIDEO BADGE
+                    // Video badge
                     if (hasVideos)
                       Positioned(
                         top: 10,
@@ -1040,9 +930,6 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                             decoration: BoxDecoration(
                               color: Colors.black.withOpacity(0.7),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.2),
-                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1064,7 +951,7 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                         ),
                       ),
 
-                    // BOTTOM INFO
+                    // Bottom info
                     Positioned(
                       left: 0,
                       right: 0,
@@ -1123,9 +1010,6 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                                     decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.white.withOpacity(0.2),
-                                      ),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
@@ -1151,13 +1035,6 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
                                     decoration: BoxDecoration(
                                       gradient: AppColors.goldGradient,
                                       shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: AppColors.accentGold
-                                              .withOpacity(0.5),
-                                          blurRadius: 10,
-                                        ),
-                                      ],
                                     ),
                                     child: Icon(
                                       Icons.arrow_forward,
@@ -1184,7 +1061,7 @@ class _CosmicFeaturedCardState extends State<_CosmicFeaturedCard> {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ⭐ COSMIC LIST CARD (Horizontal)
+// COSMIC LIST CARD
 // ═══════════════════════════════════════════════════════════
 class _CosmicListCard extends StatelessWidget {
   final Map<String, dynamic> dest;
@@ -1209,10 +1086,7 @@ class _CosmicListCard extends StatelessWidget {
     final videoCount = (dest['videos'] as List?)?.length ?? 0;
 
     return GestureDetector(
-      onTap: () {
-        debugPrint('🎯 LIST CARD TAPPED: ${dest['name']}');
-        onTap();
-      },
+      onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
         margin: EdgeInsets.only(bottom: height * 0.015),
@@ -1229,10 +1103,7 @@ class _CosmicListCard extends StatelessWidget {
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () {
-              debugPrint('🎯 LIST INKWELL TAPPED: ${dest['name']}');
-              onTap();
-            },
+            onTap: onTap,
             borderRadius: BorderRadius.circular(20),
             splashColor: AppColors.accentGold.withOpacity(0.3),
             child: ClipRRect(
@@ -1242,12 +1113,10 @@ class _CosmicListCard extends StatelessWidget {
                   color: Colors.white.withOpacity(0.05),
                   border: Border.all(
                     color: Colors.white.withOpacity(0.1),
-                    width: 1,
                   ),
                 ),
                 child: Row(
                   children: [
-                    // Image
                     Stack(
                       children: [
                         SizedBox(
@@ -1269,53 +1138,6 @@ class _CosmicListCard extends StatelessWidget {
                                 color: Colors.white24),
                           ),
                         ),
-                        Positioned.fill(
-                          child: IgnorePointer(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.black.withOpacity(0.5),
-                                  ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (rank > 0)
-                          Positioned(
-                            top: 8,
-                            left: 8,
-                            child: IgnorePointer(
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: width * 0.02,
-                                  vertical: width * 0.01,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: rank == 1
-                                        ? [const Color(0xFFFFD700), const Color(0xFFFFA500)]
-                                        : rank == 2
-                                        ? [const Color(0xFFC0C0C0), const Color(0xFF9E9E9E)]
-                                        : [const Color(0xFFCD7F32), const Color(0xFF8B4513)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                child: Text(
-                                  '#$rank',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: width * 0.028,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
                         if (hasVideos)
                           Positioned(
                             bottom: 8,
@@ -1351,8 +1173,6 @@ class _CosmicListCard extends StatelessWidget {
                           ),
                       ],
                     ),
-
-                    // Content
                     Expanded(
                       child: Padding(
                         padding: EdgeInsets.all(width * 0.035),
@@ -1360,33 +1180,6 @@ class _CosmicListCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (dest['featured'] == true)
-                              Container(
-                                margin: const EdgeInsets.only(bottom: 6),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  gradient: AppColors.goldGradient,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.star,
-                                        size: 10, color: Colors.black),
-                                    SizedBox(width: 3),
-                                    Text(
-                                      'FEATURED',
-                                      style: TextStyle(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                             Text(
                               dest['name'] ?? 'Unnamed',
                               style: TextStyle(
@@ -1462,7 +1255,7 @@ class _CosmicListCard extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ⭐ STAGGERED CARD
+// STAGGERED CARD
 // ═══════════════════════════════════════════════════════════
 class _StaggeredCard extends StatefulWidget {
   final Widget child;
@@ -1478,7 +1271,6 @@ class _StaggeredCardState extends State<_StaggeredCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
   late Animation<double> _scaleAnimation;
 
   @override
@@ -1492,11 +1284,6 @@ class _StaggeredCardState extends State<_StaggeredCard>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOut),
     );
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-            .animate(
-          CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
-        );
     _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
@@ -1516,12 +1303,9 @@ class _StaggeredCardState extends State<_StaggeredCard>
   Widget build(BuildContext context) {
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: SlideTransition(
-        position: _slideAnimation,
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: widget.child,
-        ),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: widget.child,
       ),
     );
   }

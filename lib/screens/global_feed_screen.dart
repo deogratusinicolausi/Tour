@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/feed_post_model.dart';
 import '../services/feed_user_service.dart';
 import '../utils/colors.dart';
 import 'feed_post_details_screen.dart';
+import 'feed_post_viewer_screen.dart';
 import 'create_post_screen.dart';
+import '../widgets/feed_app_bar.dart';
 import '../widgets/post_options_sheet.dart';
 import 'profile_screen.dart';
 
@@ -18,21 +21,34 @@ class _GlobalFeedScreenState extends State<GlobalFeedScreen>
     with TickerProviderStateMixin {
   final _service = FeedUserService();
   final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
+  final ValueNotifier<double> _scrollOffset = ValueNotifier(0);
   late AnimationController _backgroundController;
+
+  // ⭐ NEW STATE
+  String _activeTab = 'for_you';
+  String _searchQuery = '';
+  late Stream<List<FeedPostModel>> _feedStream;
 
   @override
   void initState() {
     super.initState();
+    _feedStream = _service.getFeed(limit: 50);
     _backgroundController = AnimationController(
       duration: const Duration(seconds: 20),
       vsync: this,
     )..repeat();
+
+    _scrollController.addListener(() {
+      _scrollOffset.value = _scrollController.offset;
+    });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
     _backgroundController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -107,63 +123,115 @@ class _GlobalFeedScreenState extends State<GlobalFeedScreen>
           // ═══════════════════════════════════════
           // 3️⃣ MAIN CONTENT
           // ═══════════════════════════════════════
-          SafeArea(
-            child: Column(
-              children: [
-                // ═══ CUSTOM APP BAR ═══
-                _buildCustomAppBar(width),
-
-                // ═══ FEED LIST ═══
-                Expanded(
-                  child: RefreshIndicator(
-                    color: AppColors.accentGold,
-                    backgroundColor: const Color(0xFF1a1a2e),
-                    onRefresh: () async {
-                      setState(() {});
-                      await Future.delayed(
-                          const Duration(milliseconds: 500));
+          Column(
+            children: [
+              ValueListenableBuilder<double>(
+                valueListenable: _scrollOffset,
+                builder: (context, offset, _) {
+                  return FeedAppBar(
+                    scrollOffset: offset,
+                    onBack: () => Navigator.pop(context),
+                    onCreate: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CreatePostScreen(),
+                        ),
+                      );
                     },
-                    child: StreamBuilder<List<FeedPostModel>>(
-                      stream: _service.getFeed(limit: 50),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                            child: CircularProgressIndicator(
-                              color: AppColors.accentGold,
-                            ),
-                          );
-                        }
-                        if (snapshot.hasError) {
-                          return Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Text(
-                                'Error: ${snapshot.error}',
-                                style: const TextStyle(color: Colors.white),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          );
-                        }
-                        final posts = snapshot.data ?? [];
-                        if (posts.isEmpty) {
-                          return _buildEmptyState(width);
-                        }
+                    onSearchChanged: (q) {
+                      setState(() => _searchQuery = q.toLowerCase().trim());
+                    },
+                    searchController: _searchController,
+                    activeTab: _activeTab,
+                    onTabChanged: (tab) => setState(() => _activeTab = tab),
+                  );
+                },
+              ),
 
-                        return ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          itemCount: posts.length,
-                          itemBuilder: (context, i) =>
-                              _buildCosmicPost(posts[i], width, i),
+              // ═══ FEED LIST ═══
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.accentGold,
+                  backgroundColor: const Color(0xFF1a1a2e),
+                  onRefresh: () async {
+                    setState(() {});
+                    await Future.delayed(
+                        const Duration(milliseconds: 500));
+                  },
+                  child: StreamBuilder<List<FeedPostModel>>(
+                    stream: _feedStream,
+                    builder: (context, snapshot) {
+                      // ⭐ DEBUG
+                      debugPrint('═══════════════════════════════════');
+                      debugPrint('📊 FEED STATE:');
+                      debugPrint('  connectionState: ${snapshot.connectionState}');
+                      debugPrint('  hasData: ${snapshot.hasData}');
+                      debugPrint('  hasError: ${snapshot.hasError}');
+                      debugPrint('  error: ${snapshot.error}');
+                      debugPrint('  data length: ${snapshot.data?.length ?? 0}');
+                      debugPrint('═══════════════════════════════════');
+
+                      if (!snapshot.hasData &&
+                          snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.accentGold,
+                          ),
                         );
-                      },
-                    ),
+                      }
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Text(
+                              'Error: ${snapshot.error}',
+                              style: const TextStyle(color: Colors.white),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        );
+                      }
+
+                      var posts = snapshot.data ?? [];
+
+                      // ⭐ Filter based on search query
+                      if (_searchQuery.isNotEmpty) {
+                        posts = posts.where((p) {
+                          return p.userName
+                                  .toLowerCase()
+                                  .contains(_searchQuery) ||
+                              p.caption
+                                  .toLowerCase()
+                                  .contains(_searchQuery) ||
+                              p.location
+                                  .toLowerCase()
+                                  .contains(_searchQuery);
+                        }).toList();
+                      }
+
+                      // ⭐ Sort by tab
+                      if (_activeTab == 'trending') {
+                        posts.sort((a, b) =>
+                            b.likesCount.compareTo(a.likesCount));
+                      }
+
+                      if (posts.isEmpty) {
+                        return _buildEmptyState(width);
+                      }
+
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: posts.length,
+                        itemBuilder: (context, i) =>
+                            _buildCosmicPost(posts[i], width, i),
+                      );
+                    },
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
@@ -187,117 +255,6 @@ class _GlobalFeedScreenState extends State<GlobalFeedScreen>
   }
 
   // ═══════════════════════════════════════
-  // CUSTOM APP BAR
-  // ═══════════════════════════════════════
-  Widget _buildCustomAppBar(double width) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: width * 0.04,
-        vertical: width * 0.03,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.white.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Back button
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              padding: EdgeInsets.all(width * 0.025),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                ),
-              ),
-              child: Icon(
-                Icons.arrow_back,
-                color: Colors.white,
-                size: width * 0.055,
-              ),
-            ),
-          ),
-          SizedBox(width: width * 0.03),
-
-          // Title
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [
-                      AppColors.accentGold,
-                      Colors.orange.shade300,
-                    ],
-                  ).createShader(bounds),
-                  child: Text(
-                    'TURIVA',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: width * 0.055,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-                Text(
-                  'Feed',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: width * 0.03,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Create post button
-          GestureDetector(
-            onTap: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const CreatePostScreen(),
-                ),
-              );
-            },
-            child: Container(
-              padding: EdgeInsets.all(width * 0.03),
-              decoration: BoxDecoration(
-                gradient: AppColors.goldGradient,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.accentGold.withOpacity(0.5),
-                    blurRadius: 15,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.add,
-                color: Colors.black,
-                size: width * 0.06,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════
   // COSMIC POST CARD
   // ═══════════════════════════════════════
   Widget _buildCosmicPost(FeedPostModel post, double width, int index) {
@@ -313,48 +270,59 @@ class _GlobalFeedScreenState extends State<GlobalFeedScreen>
           child: Opacity(opacity: value, child: child),
         );
       },
-      child: Container(
-        margin: EdgeInsets.symmetric(
-          horizontal: width * 0.035,
-          vertical: width * 0.025,
-        ),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.5),
-              blurRadius: 25,
-              offset: const Offset(0, 10),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => FeedPostViewerScreen(post: post),
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF1a1a2e).withOpacity(0.85),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-                width: 1,
+          );
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          margin: EdgeInsets.symmetric(
+            horizontal: width * 0.035,
+            vertical: width * 0.025,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 25,
+                offset: const Offset(0, 10),
               ),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ═══ USER HEADER ═══
-                _buildUserHeader(post, width),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1a1a2e).withOpacity(0.85),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ═══ USER HEADER ═══
+                  _buildUserHeader(post, width),
 
-                // ═══ MEDIA ═══
-                _buildMedia(post, width),
+                  // ═══ MEDIA ═══
+                  _buildMedia(post, width),
 
-                // ═══ CAPTION + LOCATION ═══
-                if (post.caption.isNotEmpty || post.location.isNotEmpty)
-                  _buildCaption(post, width),
+                  // ═══ CAPTION + LOCATION ═══
+                  if (post.caption.isNotEmpty || post.location.isNotEmpty)
+                    _buildCaption(post, width),
 
-                // ═══ ACTIONS ═══
-                _buildActions(post, width),
-              ],
+                  // ═══ ACTIONS ═══
+                  _buildActions(post, width),
+                ],
+              ),
             ),
           ),
         ),
@@ -371,12 +339,22 @@ class _GlobalFeedScreenState extends State<GlobalFeedScreen>
           // ⭐ AVATAR — CLICKABLE
           GestureDetector(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ProfileScreen(),
-                ),
-              );
+              final currentUser = FirebaseAuth.instance.currentUser;
+              if (currentUser?.uid == post.userId) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ProfileScreen(),
+                  ),
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ProfileScreen(), // Typically pass post.userId here
+                  ),
+                );
+              }
             },
             child: Container(
               padding: const EdgeInsets.all(2),
@@ -672,40 +650,52 @@ class _GlobalFeedScreenState extends State<GlobalFeedScreen>
       padding: EdgeInsets.all(width * 0.035),
       child: Row(
         children: [
-          // ⭐ LIKE — animated
-          StreamBuilder<bool>(
-            stream: _service.isLiked(post.id),
-            builder: (context, snap) {
-              final liked = snap.data ?? false;
-              return _animatedAction(
-                icon: liked ? Icons.favorite : Icons.favorite_border,
-                label: '${post.likesCount}',
-                color: liked ? Colors.redAccent : Colors.white,
-                glow: liked ? Colors.redAccent : null,
-                width: width,
-                onTap: () => _service.toggleLike(post.id, liked),
+          // ⭐ LIKE — real-time count
+          StreamBuilder<FeedPostModel?>(
+            stream: _service.getPost(post.id),
+            builder: (context, snapshot) {
+              final currentPost = snapshot.data ?? post;
+              return StreamBuilder<bool>(
+                stream: _service.isLiked(post.id),
+                builder: (context, likeSnap) {
+                  final liked = likeSnap.data ?? false;
+                  return _animatedAction(
+                    icon: liked ? Icons.favorite : Icons.favorite_border,
+                    label: '${currentPost.likesCount}',
+                    color: liked ? Colors.redAccent : Colors.white,
+                    glow: liked ? Colors.redAccent : null,
+                    width: width,
+                    onTap: () => _service.toggleLike(post.id, liked),
+                  );
+                },
               );
             },
           ),
           SizedBox(width: width * 0.02),
 
-          // ⭐ COMMENT
-          _animatedAction(
-            icon: Icons.chat_bubble_outline,
-            label: '${post.commentsCount}',
-            color: Colors.white,
-            width: width,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => FeedPostDetailsScreen(post: post),
-              ),
-            ),
+          // ⭐ COMMENT — real-time count
+          StreamBuilder<FeedPostModel?>(
+            stream: _service.getPost(post.id),
+            builder: (context, snapshot) {
+              final currentPost = snapshot.data ?? post;
+              return _animatedAction(
+                icon: Icons.chat_bubble_outline,
+                label: '${currentPost.commentsCount}',
+                color: Colors.white,
+                width: width,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FeedPostViewerScreen(post: currentPost),
+                  ),
+                ),
+              );
+            },
           ),
 
           const Spacer(),
 
-          // ⭐ SAVE
+          // ⭐ SAVE — real-time
           StreamBuilder<bool>(
             stream: _service.isSaved(post.id),
             builder: (context, snap) {
