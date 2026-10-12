@@ -282,8 +282,8 @@ class _GlobalFeedScreenState extends State<GlobalFeedScreen>
         behavior: HitTestBehavior.opaque,
         child: Container(
           margin: EdgeInsets.symmetric(
-            horizontal: width * 0.035,
-            vertical: width * 0.025,
+            horizontal: width * 0.03, // Slightly less side margin
+            vertical: width * 0.015,   // Reduced vertical gap between cards
           ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),

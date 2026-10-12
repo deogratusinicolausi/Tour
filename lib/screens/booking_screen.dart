@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import 'package:turiva/screens/payment/payment_screen.dart';
 import '../models/booking_model.dart';
 import '../services/booking_service.dart';
 import '../utils/colors.dart';
 import '../models/coupon_model.dart';
 import '../services/coupon_service.dart';
 import '../widgets/coupon_input_widget.dart';
-import '../services/receipt_service.dart';
-import 'receipt_screen.dart';
+
 
 class BookingScreen extends StatefulWidget {
   final String itemType;
@@ -46,17 +46,17 @@ class _BookingScreenState extends State<BookingScreen> {
   int _guests = 1;
   bool _isLoading = false;
 
-  // ⭐️ Add-ons
+  // ⭐ Add-ons
   bool _addGuide = false;
   bool _addTransport = false;
   bool _addMeals = false;
 
   CouponModel? _appliedCoupon;
   double _discount = 0;
-  double get _finalTotal => _totalPrice - _discount;
 
-  // ⭐️ PAYMENT PAUSED — booking confirmed without payment
-  String _paymentMethod = 'unpaid'; // (payment phone controller removed — will return when payment is back)
+  // ⭐ Default payment method — user ata-chagua kwenye PaymentScreen
+  String _paymentMethod = 'mobile_money';
+  String _paymentNetwork = 'mpesa';
 
   @override
   void initState() {
@@ -97,8 +97,9 @@ class _BookingScreenState extends State<BookingScreen> {
     return total * _guests;
   }
   double get _totalPrice => _basePrice + _addonsPrice;
+  double get _finalTotal => _totalPrice - _discount;
 
-  Future<void> _submitBooking() async {
+  Future<void> _continueToPayment() async {
     if (!_formKey.currentState!.validate()) return;
     if (_travelDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -122,11 +123,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
     setState(() => _isLoading = true);
 
-    // ⚠️ PAYMENT PAUSED — booking saves directly without payment
-    // When payment is ready, restore the block above.
-
-    final couponService = CouponService();
-
+    // ⭐ Create booking with paymentStatus: 'pending'
     final booking = BookingModel(
       id: '',
       userId: _user!.uid,
@@ -146,60 +143,24 @@ class _BookingScreenState extends State<BookingScreen> {
       couponDiscount: _discount,
       finalAmount: _finalTotal,
       paymentMethod: _paymentMethod,
+      paymentNetwork: _paymentNetwork,
     );
 
-    final id = await _bookingService.createBooking(booking);
+    final bookingId = await _bookingService.createBooking(booking);
 
-    if (id != null && _appliedCoupon != null) {
+    // ⭐ Apply coupon
+    if (bookingId != null && _appliedCoupon != null) {
+      final couponService = CouponService();
       await couponService.applyCoupon(
         couponId: _appliedCoupon!.id,
         userId: _user!.uid,
       );
     }
 
-    // ⭐️ CREATE RECEIPT
-    if (id != null) {
-      final receiptService = ReceiptService();
-      final receipt = await receiptService.createFromBooking(
-        bookingId: id,
-        userId: _user!.uid,
-        userName: _nameController.text.trim(),
-        userEmail: _emailController.text.trim(),
-        userPhone: _phoneController.text.trim(),
-        itemType: widget.itemType,
-        itemName: widget.itemName,
-        itemImage: widget.itemImage,
-        travelDate: _travelDate,
-        guests: _guests,
-        baseAmount: _basePrice,
-        addonsAmount: _addonsPrice,
-        couponDiscount: _discount,
-        couponCode: _appliedCoupon?.code ?? '',
-        totalAmount: _finalTotal,
-        currency: widget.currency,
-        paymentMethod: _paymentMethod,
-        paymentStatus: 'pending',
-        transactionId: '',
-        bookingStatus: 'pending',
-      );
-
-      if (receipt != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ReceiptScreen(receipt: receipt),
-          ),
-        );
-        return;
-      }
-    }
-
     setState(() => _isLoading = false);
 
-    if (mounted) {
-      if (id != null) {
-        _showSuccessDialog();
-      } else {
+    if (bookingId == null) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('❌ Booking failed. Try again.'),
@@ -207,103 +168,45 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
         );
       }
+      return;
     }
-  }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_circle,
-                  color: Colors.green, size: 70),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              '🎉 Booking Confirmed!',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Your booking for "${widget.itemName}" has been submitted.\n\n✅ Admin will confirm shortly.\n💳 Payment will be requested after confirmation.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.5),
-            ),
-            const SizedBox(height: 25),
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  _summaryRow('Item', widget.itemName),
-                  _summaryRow('Guests', '$_guests'),
-                  _summaryRow('Total', '${widget.currency} ${_finalTotal.toStringAsFixed(0)}'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                child: const Text(
-                  'DONE',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    // ⭐ Nenda kwenye PaymentScreen
+    if (mounted) {
+      final updatedBooking = BookingModel(
+        id: bookingId,
+        userId: booking.userId,
+        userName: booking.userName,
+        userEmail: booking.userEmail,
+        userPhone: booking.userPhone,
+        itemType: booking.itemType,
+        itemId: booking.itemId,
+        itemName: booking.itemName,
+        itemImage: booking.itemImage,
+        travelDate: booking.travelDate,
+        guests: booking.guests,
+        amount: booking.amount,
+        currency: booking.currency,
+        specialRequests: booking.specialRequests,
+        couponCode: booking.couponCode,
+        couponDiscount: booking.couponDiscount,
+        finalAmount: booking.finalAmount,
+        paymentMethod: booking.paymentMethod,
+        paymentNetwork: booking.paymentNetwork,
+      );
 
-  Widget _summaryRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-          Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: AppColors.primary)),
-        ],
-      ),
-    );
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => PaymentScreen(booking: updatedBooking),
+        ),
+      );
+
+      // ⭐ Kama payment successful — rudi nyumbani
+      if (result == true && mounted) {
+        Navigator.pop(context);
+      }
+    }
   }
 
   @override
@@ -312,7 +215,6 @@ class _BookingScreenState extends State<BookingScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _requestsController.dispose();
-    // _paymentPhoneController — removed (payment paused)
     super.dispose();
   }
 
@@ -335,11 +237,10 @@ class _BookingScreenState extends State<BookingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ⭐️ ITEM CARD
               _buildItemCard(width, height),
               SizedBox(height: height * 0.025),
 
-              // ⭐️ STEP 1: CONTACT INFO
+              // ⭐ STEP 1: CONTACT
               _stepHeader('1', '👤 Contact Information', width),
               SizedBox(height: height * 0.015),
               _buildField(_nameController, 'Full Name', Icons.person,
@@ -348,7 +249,7 @@ class _BookingScreenState extends State<BookingScreen> {
               _buildField(_emailController, 'Email Address', Icons.email,
                   keyboardType: TextInputType.emailAddress,
                   validator: (v) =>
-                  !v!.contains('@') ? 'Invalid email' : null),
+                      !v!.contains('@') ? 'Invalid email' : null),
               SizedBox(height: height * 0.015),
               _buildField(_phoneController, 'Phone Number', Icons.phone,
                   keyboardType: TextInputType.phone,
@@ -356,182 +257,28 @@ class _BookingScreenState extends State<BookingScreen> {
 
               SizedBox(height: height * 0.03),
 
-              // ⭐️ STEP 2: TRAVEL DETAILS
+              // ⭐ STEP 2: TRAVEL
               _stepHeader('2', '✈️ Travel Details', width),
               SizedBox(height: height * 0.015),
-
-              // Date picker
-              GestureDetector(
-                onTap: _pickDate,
-                child: Container(
-                  padding: EdgeInsets.all(width * 0.04),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: _travelDate != null
-                          ? AppColors.primary
-                          : Colors.grey.shade300,
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(width * 0.025),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.calendar_today,
-                            color: AppColors.primary, size: width * 0.05),
-                      ),
-                      SizedBox(width: width * 0.03),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Travel Date',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: width * 0.028,
-                              ),
-                            ),
-                            Text(
-                              _travelDate != null
-                                  ? DateFormat('EEEE, dd MMM yyyy')
-                                  .format(_travelDate!)
-                                  : 'Tap to select',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: width * 0.038,
-                                color: _travelDate != null
-                                    ? Colors.grey.shade800
-                                    : Colors.grey.shade400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.arrow_forward_ios,
-                          size: width * 0.035,
-                          color: Colors.grey.shade400),
-                    ],
-                  ),
-                ),
-              ),
-
+              _buildDatePicker(width, height),
               SizedBox(height: height * 0.015),
-
-              // Guests picker
-              Container(
-                padding: EdgeInsets.all(width * 0.04),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(width * 0.025),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(Icons.people,
-                          color: AppColors.primary, size: width * 0.05),
-                    ),
-                    SizedBox(width: width * 0.03),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Number of Guests',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: width * 0.028,
-                            ),
-                          ),
-                          Text(
-                            '$_guests guest${_guests > 1 ? 's' : ''}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: width * 0.038,
-                              color: Colors.grey.shade800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        if (_guests > 1) setState(() => _guests--);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: _guests > 1
-                              ? AppColors.primary
-                              : Colors.grey.shade200,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.remove,
-                            color: _guests > 1
-                                ? Colors.white
-                                : Colors.grey,
-                            size: 20),
-                      ),
-                    ),
-                    SizedBox(width: width * 0.03),
-                    GestureDetector(
-                      onTap: () => setState(() => _guests++),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.add,
-                            color: Colors.white, size: 20),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _buildGuestsPicker(width, height),
 
               SizedBox(height: height * 0.03),
 
-              // ⭐️ STEP 3: ADD-ONS
+              // ⭐ STEP 3: ADD-ONS
               _stepHeader('3', '🎁 Add-ons (Optional)', width),
               SizedBox(height: height * 0.015),
-              _buildAddon(
-                '🧑‍🏫 Professional Guide',
-                '\$50 per guest',
-                _addGuide,
-                    (v) => setState(() => _addGuide = v),
-                width,
-              ),
-              _buildAddon(
-                '🚐 Transport Service',
-                '\$80 per guest',
-                _addTransport,
-                    (v) => setState(() => _addTransport = v),
-                width,
-              ),
-              _buildAddon(
-                '🍽️ Meals Package',
-                '\$40 per guest',
-                _addMeals,
-                    (v) => setState(() => _addMeals = v),
-                width,
-              ),
+              _buildAddon('🧑‍🏫 Professional Guide', '\$50 per guest',
+                  _addGuide, (v) => setState(() => _addGuide = v), width),
+              _buildAddon('🚐 Transport Service', '\$80 per guest',
+                  _addTransport, (v) => setState(() => _addTransport = v), width),
+              _buildAddon('🍽️ Meals Package', '\$40 per guest',
+                  _addMeals, (v) => setState(() => _addMeals = v), width),
 
               SizedBox(height: height * 0.03),
 
-              // ⭐️ STEP 4: SPECIAL REQUESTS
+              // ⭐ STEP 4: REQUESTS
               _stepHeader('4', '💬 Special Requests', width),
               SizedBox(height: height * 0.015),
               _buildField(
@@ -543,7 +290,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
               SizedBox(height: height * 0.03),
 
-              // ⭐️ STEP 5: COUPON
+              // ⭐ STEP 5: COUPON
               _stepHeader('5', '🎁 Coupon Code', width),
               SizedBox(height: height * 0.015),
               CouponInputWidget(
@@ -558,115 +305,17 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
               SizedBox(height: height * 0.03),
 
-              // ⭐️ STEP 6: PAYMENT METHOD
-              // _stepHeader('6', '💳 Payment Method', width),
-              // SizedBox(height: height * 0.015),
-              // PaymentMethodSelector(
-              //   selectedMethod: _paymentMethod,
-              //   onChanged: (value) {
-              //     setState(() => _paymentMethod = value);
-              //   },
-              // ),
-              // SizedBox(height: height * 0.015),
-              //
-              // // Phone Number Field (kwa Mobile Money)
-              // TextField(
-              //   controller: _paymentPhoneController,
-              //   keyboardType: TextInputType.phone,
-              //   decoration: InputDecoration(
-              //     labelText: 'Phone Number (e.g. 255712345678)',
-              //     prefixIcon: const Icon(Icons.phone_android),
-              //     hintText: '2557XXXXXXXX',
-              //     filled: true,
-              //     fillColor: Colors.white,
-              //     border: OutlineInputBorder(
-              //       borderRadius: BorderRadius.circular(12),
-              //       borderSide: BorderSide.none,
-              //     ),
-              //     enabledBorder: OutlineInputBorder(
-              //       borderRadius: BorderRadius.circular(12),
-              //       borderSide: BorderSide(color: Colors.grey.shade300),
-              //     ),
-              //     focusedBorder: OutlineInputBorder(
-              //       borderRadius: BorderRadius.circular(12),
-              //       borderSide: const BorderSide(color: AppColors.primary, width: 2),
-              //     ),
-              //   ),
-              // ),
+              // ⭐ PRICE BREAKDOWN
+              _buildPriceBreakdown(width, height),
 
               SizedBox(height: height * 0.03),
 
-              // ⭐️ PRICE BREAKDOWN
-              Container(
-                padding: EdgeInsets.all(width * 0.05),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      '💰 PRICE BREAKDOWN',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    const Divider(height: 20),
-                    _priceRow(
-                      'Base price (${widget.price.toStringAsFixed(0)} × $_guests)',
-                      '${widget.currency} ${_basePrice.toStringAsFixed(0)}',
-                    ),
-                    if (_addGuide)
-                      _priceRow('Guide', '${widget.currency} ${(50 * _guests).toStringAsFixed(0)}'),
-                    if (_addTransport)
-                      _priceRow('Transport', '${widget.currency} ${(80 * _guests).toStringAsFixed(0)}'),
-                    if (_addMeals)
-                      _priceRow('Meals', '${widget.currency} ${(40 * _guests).toStringAsFixed(0)}'),
-
-                    if (_discount > 0) ...[
-                      _priceRow(
-                        'Discount (${_appliedCoupon!.code})',
-                        '-${widget.currency} ${_discount.toStringAsFixed(0)}',
-                      ),
-                    ],
-
-                    const Divider(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'TOTAL',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        Text(
-                          '${widget.currency} ${_finalTotal.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 22,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              SizedBox(height: height * 0.03),
-
-              // ⭐️ SUBMIT
+              // ⭐ CONTINUE BUTTON
               SizedBox(
                 width: double.infinity,
                 height: 60,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitBooking,
+                  onPressed: _isLoading ? null : _continueToPayment,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
@@ -678,22 +327,22 @@ class _BookingScreenState extends State<BookingScreen> {
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.check_circle,
-                          color: Colors.white, size: 22),
-                      const SizedBox(width: 10),
-                      Text(
-                        'CONFIRM BOOKING • ${widget.currency} ${_finalTotal.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.5,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.arrow_forward,
+                                color: Colors.white, size: 22),
+                            const SizedBox(width: 10),
+                            Text(
+                              'CONTINUE TO PAYMENT',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
 
@@ -820,13 +469,146 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildAddon(
-      String title,
-      String subtitle,
-      bool value,
-      Function(bool) onChanged,
-      double width,
-      ) {
+  Widget _buildDatePicker(double width, double height) {
+    return GestureDetector(
+      onTap: _pickDate,
+      child: Container(
+        padding: EdgeInsets.all(width * 0.04),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _travelDate != null
+                ? AppColors.primary
+                : Colors.grey.shade300,
+            width: 2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(width * 0.025),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.calendar_today,
+                  color: AppColors.primary, size: width * 0.05),
+            ),
+            SizedBox(width: width * 0.03),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Travel Date',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: width * 0.028,
+                    ),
+                  ),
+                  Text(
+                    _travelDate != null
+                        ? DateFormat('EEEE, dd MMM yyyy')
+                            .format(_travelDate!)
+                        : 'Tap to select',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: width * 0.038,
+                      color: _travelDate != null
+                          ? Colors.grey.shade800
+                          : Colors.grey.shade400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios,
+                size: width * 0.035, color: Colors.grey.shade400),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuestsPicker(double width, double height) {
+    return Container(
+      padding: EdgeInsets.all(width * 0.04),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(width * 0.025),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.people,
+                color: AppColors.primary, size: width * 0.05),
+          ),
+          SizedBox(width: width * 0.03),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Number of Guests',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: width * 0.028,
+                  ),
+                ),
+                Text(
+                  '$_guests guest${_guests > 1 ? 's' : ''}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: width * 0.038,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              if (_guests > 1) setState(() => _guests--);
+            },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _guests > 1
+                    ? AppColors.primary
+                    : Colors.grey.shade200,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.remove,
+                  color: _guests > 1 ? Colors.white : Colors.grey,
+                  size: 20),
+            ),
+          ),
+          SizedBox(width: width * 0.03),
+          GestureDetector(
+            onTap: () => setState(() => _guests++),
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 20),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddon(String title, String subtitle, bool value,
+      Function(bool) onChanged, double width) {
     return Container(
       margin: EdgeInsets.only(bottom: width * 0.02),
       padding: EdgeInsets.symmetric(
@@ -874,29 +656,92 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
+  Widget _buildPriceBreakdown(double width, double height) {
+    return Container(
+      padding: EdgeInsets.all(width * 0.05),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          const Text(
+            '💰 PRICE BREAKDOWN',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              letterSpacing: 1,
+            ),
+          ),
+          const Divider(height: 20),
+          _priceRow(
+            'Base price (${widget.price.toStringAsFixed(0)} × $_guests)',
+            '${widget.currency} ${_basePrice.toStringAsFixed(0)}',
+          ),
+          if (_addGuide)
+            _priceRow('Guide',
+                '${widget.currency} ${(50 * _guests).toStringAsFixed(0)}'),
+          if (_addTransport)
+            _priceRow('Transport',
+                '${widget.currency} ${(80 * _guests).toStringAsFixed(0)}'),
+          if (_addMeals)
+            _priceRow('Meals',
+                '${widget.currency} ${(40 * _guests).toStringAsFixed(0)}'),
+          if (_discount > 0)
+            _priceRow('Discount (${_appliedCoupon!.code})',
+                '-${widget.currency} ${_discount.toStringAsFixed(0)}'),
+          const Divider(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'TOTAL',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  letterSpacing: 1,
+                ),
+              ),
+              Text(
+                '${widget.currency} ${_finalTotal.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _priceRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          Text(label,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
           Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 13)),
+              style:
+                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
         ],
       ),
     );
   }
 
   Widget _buildField(
-      TextEditingController controller,
-      String label,
-      IconData icon, {
-        String? Function(String?)? validator,
-        int maxLines = 1,
-        TextInputType? keyboardType,
-      }) {
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    String? Function(String?)? validator,
+    int maxLines = 1,
+    TextInputType? keyboardType,
+  }) {
     return TextFormField(
       controller: controller,
       validator: validator,

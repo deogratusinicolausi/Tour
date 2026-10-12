@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:turiva/widgets/air_control_host.dart';
 import 'utils/colors.dart';
@@ -32,14 +34,20 @@ void main() async {
 
   );
 
+  // ⭐ AppCheck — Debug mode (kwa emulator)
+  if (kDebugMode) {
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: AndroidProvider.debug,
+      appleProvider: AppleProvider.debug,
+    );
+  }
+
   await NotificationService.init();
   GeofenceService.start();
 
-  // ⭐️ Connect to Functions Emulator (kwa testing tu)
-  FirebaseFunctions.instance.useFunctionsEmulator('localhost', 5001);
-
-  // Start listening for notifications
-  FirebaseAuth.instance.authStateChanges().listen((user) {
+  // ⭐️ Connect to Functions Emulator
+  // FirebaseFunctions.instance.useFunctionsEmulator('192.168.1.130', 5001);
+  FirebaseFunctions.instance.useFunctionsEmulator('192.168.1.130', 5001);  FirebaseAuth.instance.authStateChanges().listen((user) {
     if (user != null) {
       NotificationService().listenForNewNotifications(user.uid);
     }

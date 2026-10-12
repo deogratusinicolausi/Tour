@@ -6,7 +6,9 @@ import '../models/cart_model.dart';
 import '../services/cart_service.dart';
 import '../utils/colors.dart';
 import 'itinerary_screen.dart';
+import 'payment/payment_screen.dart';
 import '../models/coupon_model.dart';
+import '../models/booking_model.dart';
 import '../services/coupon_service.dart';
 import '../widgets/coupon_input_widget.dart';
 
@@ -93,105 +95,99 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Create bookings for each item
-      final bookingIds = <String>[];
-      for (var item in widget.cart.items) {
-        final bookingRef = await _firestore.collection('bookings').add({
-          'userId': _user!.uid,
-          'userName': _nameController.text.trim(),
-          'userEmail': _emailController.text.trim(),
-          'userPhone': _phoneController.text.trim(),
-          'itemType': item.itemType,
-          'itemId': item.itemId,
-          'itemName': item.itemName,
-          'itemImage': item.itemImage,
-          'travelDate': Timestamp.fromDate(_startDate!),
-          'guests': item.guests,
-          'quantity': item.quantity,
-          'amount': item.totalPrice,
-          'currency': item.currency,
-          'paymentStatus': 'pending',
-          'bookingStatus': 'pending',
-          'paymentMethod': _paymentMethod,
-          'specialRequests': _requestsController.text.trim(),
-          'isBulkBooking': true,
-          'bulkBookingId': 'BULK_${DateTime.now().millisecondsSinceEpoch}',
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-        bookingIds.add(bookingRef.id);
+      // ⭐ Create ONE booking kwa cart (bulk)
+      final bulkBookingId = 'BULK_${DateTime.now().millisecondsSinceEpoch}';
 
-        // Apply coupon
-        if (_appliedCoupon != null) {
-          final couponService = CouponService();
-          await couponService.applyCoupon(
-            couponId: _appliedCoupon!.id,
-            userId: _user!.uid,
-          );
-        }
-
-        // Update booking with coupon details
-        if (_appliedCoupon != null) {
-          await _firestore.collection('bookings').doc(bookingRef.id).update({
-            'couponCode': _appliedCoupon!.code,
-            'couponDiscount': _discount,
-            'finalAmount': _finalAmount,
-          });
-        }
-      }
-
-      // Create order record
-      final orderRef = await _firestore.collection('orders').add({
+      final bookingRef = await _firestore.collection('bookings').add({
         'userId': _user!.uid,
         'userName': _nameController.text.trim(),
         'userEmail': _emailController.text.trim(),
         'userPhone': _phoneController.text.trim(),
-        'bookingIds': bookingIds,
-        'items': widget.cart.items.map((e) => e.toMap()).toList(),
-        'totalAmount': _finalAmount,
-        'discount': _discount,
-        'couponCode': _appliedCoupon?.code,
-        'currency': widget.cart.currency,
+        'itemType': 'bulk_cart',
+        'itemId': widget.cart.items.first.itemId,
+        'itemName': '${widget.cart.itemCount} items',
+        'itemImage': widget.cart.items.first.itemImage,
         'travelDate': Timestamp.fromDate(_startDate!),
-        'paymentMethod': _paymentMethod,
+        'guests': widget.cart.items.fold<int>(0, (sum, e) => sum + e.guests),
+        'amount': _finalAmount,
+        'currency': widget.cart.currency,
         'paymentStatus': 'pending',
-        'orderStatus': 'pending',
+        'bookingStatus': 'pending',
+        'paymentMethod': _paymentMethod,
         'specialRequests': _requestsController.text.trim(),
+        'isBulkBooking': true,
+        'bulkBookingId': bulkBookingId,
+        'cartItems': widget.cart.items.map((e) => e.toMap()).toList(),
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // Log activity for admin
+      final bookingId = bookingRef.id;
+
+      // ⭐ Apply coupon
+      if (_appliedCoupon != null) {
+        final couponService = CouponService();
+        await couponService.applyCoupon(
+          couponId: _appliedCoupon!.id,
+          userId: _user!.uid,
+        );
+
+        await bookingRef.update({
+          'couponCode': _appliedCoupon!.code,
+          'couponDiscount': _discount,
+          'finalAmount': _finalAmount,
+        });
+      }
+
+      // ⭐ Log activity
       await _firestore.collection('activities').add({
         'type': 'order',
         'action': 'created',
-        'title':
-        'New Order: ${widget.cart.itemCount} items',
+        'title': 'New Order: ${widget.cart.itemCount} items',
         'description':
-        '${_nameController.text} placed an order for ${widget.cart.currency} ${_finalAmount.toStringAsFixed(0)}',
+            '${_nameController.text} placed an order for ${widget.cart.currency} ${_finalAmount.toStringAsFixed(0)}',
         'userId': _user!.uid,
         'userName': _nameController.text,
-        'itemId': orderRef.id,
+        'itemId': bookingId,
         'itemType': 'order',
         'icon': '🛒',
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Clear cart
-      await _cartService.clearCart(_user!.uid);
-
       setState(() => _isLoading = false);
 
+      // ⭐ Nenda kwenye PaymentScreen
       if (mounted) {
-        Navigator.pushReplacement(
+        final booking = BookingModel(
+          id: bookingId,
+          userId: _user!.uid,
+          userName: _nameController.text.trim(),
+          userEmail: _emailController.text.trim(),
+          userPhone: _phoneController.text.trim(),
+          itemType: 'bulk_cart',
+          itemId: widget.cart.items.first.itemId,
+          itemName: '${widget.cart.itemCount} items',
+          itemImage: widget.cart.items.first.itemImage,
+          travelDate: _startDate,
+          guests: widget.cart.items.fold<int>(0, (s, e) => s + e.guests),
+          amount: _finalAmount,
+          currency: widget.cart.currency,
+          finalAmount: _finalAmount,
+          paymentMethod: _paymentMethod,
+        );
+
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ItineraryScreen(
-              orderId: orderRef.id,
-              bookingIds: bookingIds,
-              startDate: _startDate!,
-            ),
+            builder: (_) => PaymentScreen(booking: booking),
           ),
         );
+
+        if (result == true && mounted) {
+          // Clear cart after successful payment
+          await _cartService.clearCart(_user!.uid);
+          if (mounted) Navigator.pop(context);
+        }
       }
     } catch (e) {
       setState(() => _isLoading = false);

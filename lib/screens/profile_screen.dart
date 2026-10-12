@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloudinary_made_easy/cloudinary_made_easy.dart';
+import 'package:turiva/screens/reviews_list_screen.dart';
 import 'package:turiva/screens/saved_posts_screen.dart';
 import 'package:turiva/screens/travel_memories_screen.dart';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
+import '../services/review_service.dart';
 import 'login_screen.dart';
 import 'national_parks_screen.dart';
 import '../utils/colors.dart';
@@ -15,7 +17,6 @@ import 'my_bookings_screen.dart';
 import 'create_trip_screen.dart';
 import 'turiva_chat_list_screen.dart';
 import 'package:lottie/lottie.dart';
-import 'dart:ui';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -194,16 +195,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       // 🆕 MY REVIEWS BUTTON
                       GestureDetector(
                         onTap: () {
-                          // Navigate to user reviews
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) =>  ReviewsListScreen(itemId: '', itemType: '', itemName: '',)),
+                          );
                         },
                         child: Container(
                           padding: EdgeInsets.all(width * 0.04),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Colors.white.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(14),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
+                                color: Colors.black.withOpacity(0.1),
                                 blurRadius: 8,
                               ),
                             ],
@@ -229,19 +233,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: width * 0.038,
-                                          color: Colors.black87,
+                                          color: Colors.white,
                                         )),
                                     Text('View your reviews',
                                         style: TextStyle(
                                           fontSize: width * 0.028,
-                                          color: Colors.grey.shade500,
+                                          color: Colors.white70,
                                         )),
                                   ],
                                 ),
                               ),
                               Icon(Icons.arrow_forward_ios,
                                   size: width * 0.035,
-                                  color: Colors.grey.shade400),
+                                  color: Colors.white70),
                             ],
                           ),
                         ),

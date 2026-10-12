@@ -1,54 +1,58 @@
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
+import '../models/payment_transaction_model.dart';
 
 class PaymentService {
-  // ⚠️ Badilisha hii na URL yako halisi ya Cloud Function
-  // Unaipata baada ya ku-deploy function yako
-  static const String _functionUrl = 'https://us-central1-com-example-turiva.cloudfunctions.net/initiateAzamPayPayment';
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFunctions _functions =
+      FirebaseFunctions.instanceFor(region: 'us-central1');
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  Future<Map<String, dynamic>> initiatePayment({
-    required String mobileNumber,
-    required String amount,
-    required String provider,
-    required String externalId,
+  Future<Map<String, dynamic>?> initiatePayment({
+    required String bookingId,
+    required String paymentMethod,
+    required String paymentNetwork,
+    required String phoneNumber,
+    required double amount,
+    required String currency,
   }) async {
     try {
-      // Pata ID token ya mtumiaji (kwa usalama)
-      final user = FirebaseAuth.instance.currentUser;
+      final user = _auth.currentUser;
       if (user == null) {
-        return {'success': false, 'message': 'User not authenticated'};
+        return {'success': false, 'error': 'User not authenticated'};
       }
 
-      final idToken = await user.getIdToken();
+      final idempotencyKey =
+          '${user.uid}_${bookingId}_${DateTime.now().millisecondsSinceEpoch}';
 
-      // Tuma ombi la HTTP POST moja kwa moja
-      final response = await http.post(
-        Uri.parse(_functionUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $idToken',
-        },
-        body: jsonEncode({
-          'mobileNumber': mobileNumber,
-          'amount': amount,
-          'provider': provider,
-          'externalId': externalId,
-        }),
-      );
+      final callable = _functions.httpsCallable('initiatePayment');
+      final result = await callable.call({
+        'bookingId': bookingId,
+        'paymentMethod': paymentMethod,
+        'paymentNetwork': paymentNetwork,
+        'phoneNumber': phoneNumber,
+        'amount': amount,
+        'currency': currency,
+        'idempotencyKey': idempotencyKey,
+      });
 
-      if (response.statusCode != 200) {
-        return {
-          'success': false,
-          'message': 'Function call failed: ${response.statusCode}'
-        };
-      }
-
-      final responseData = jsonDecode(response.body);
-      return Map<String, dynamic>.from(responseData);
-
+      return Map<String, dynamic>.from(result.data);
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      print('🔥 initiatePayment error: $e');
+      return {'success': false, 'error': e.toString()};
     }
+  }
+
+  Stream<PaymentTransactionModel?> getTransaction(String transactionId) {
+    return _firestore
+        .collection('payment_transactions')
+        .doc(transactionId)
+        .snapshots()
+        .map((doc) {
+      if (!doc.exists) return null;
+      return PaymentTransactionModel.fromMap(
+          doc.data() as Map<String, dynamic>, doc.id);
+    });
   }
 }

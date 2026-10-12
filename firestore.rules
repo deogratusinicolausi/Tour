@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ⭐ ADMIN CHECK
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+            .data.role in ['admin', 'superAdmin'];
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // ⭐ USERS
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // ⭐ BOOKINGS
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+    
+    // ⭐ PAYMENT TRANSACTIONS
+    match /payment_transactions/{transactionId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create, update, delete: if false; // Server only
+    }
+    
+    match /payment_webhooks/{webhookId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if false;
+    }
+    
+    match /idempotency_keys/{key} {
+      allow read, write: if false;
+    }
+    
+    // ⭐ CONTENT COLLECTIONS
+    match /destinations/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /hotels/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /tours/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /bookings/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+    
+    // ⭐ DEFAULT DENY
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

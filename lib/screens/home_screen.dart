@@ -3,6 +3,10 @@ import 'dart:ui';
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lottie/lottie.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../services/web_tts_loader.dart';
+import '../widgets/typewriter_text.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/notification_service.dart';
@@ -48,10 +52,72 @@ class _HomeScreenState extends State<HomeScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   User? user;
 
+  // ⭐ TTS Instance
+  final FlutterTts _flutterTts = FlutterTts();
+  bool _hasSpoken = false; // ⭐ Isiongee mara mbili
+
   @override
   void initState() {
     super.initState();
     user = _auth.getCurrentUser();
+    _speakWelcome(); // ⭐ Ongeza hii
+  }
+
+  Future<void> _speakWelcome() async {
+    if (_hasSpoken) return; // ⭐ Isiongee mara mbili
+    _hasSpoken = true;
+
+    try {
+      // ⭐ Subiri kidogo — jina lipatikane
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      final userName = user?.displayName ?? user?.email?.split('@')[0] ?? 'Traveler';
+
+      final message =
+          'Hello, $userName. '
+          'Welcome to TURIVA. '
+          'Explore Tanzania. '
+          'Safaris. Coastal. Culture. Heritage.';
+
+      // ⭐ Ondoa emojis (kwa TTS)
+      final cleanMessage = _removeEmojis(message);
+
+      debugPrint('🔊 Speaking: $cleanMessage');
+
+      if (kIsWeb) {
+        WebTTS.speak(cleanMessage, lang: 'en-US', rate: 0.9);
+      } else {
+        await _flutterTts.stop();
+        await _flutterTts.setLanguage('en-US');
+        await _flutterTts.setSpeechRate(0.5);
+        await _flutterTts.setVolume(1.0);
+        await _flutterTts.setPitch(1.0);
+        await _flutterTts.speak(cleanMessage);
+      }
+    } catch (e) {
+      debugPrint('🔥 _speakWelcome: $e');
+    }
+  }
+
+  // ⭐ Helper — Safisha emojis
+  String _removeEmojis(String text) {
+    final emojiRegex = RegExp(
+      r'[\u{1F300}-\u{1F9FF}]|'
+      r'[\u{2600}-\u{26FF}]|'
+      r'[\u{2700}-\u{27BF}]|'
+      r'[\u{1F600}-\u{1F64F}]|'
+      r'[\u{1F680}-\u{1F6FF}]|'
+      r'[\u{1F1E0}-\u{1F1FF}]',
+      unicode: true,
+    );
+    return text.replaceAll(emojiRegex, '').replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  @override
+  void dispose() {
+    _flutterTts.stop(); // ⭐ Simamisha TTS
+    if (kIsWeb) WebTTS.stop();
+    super.dispose();
   }
 
   @override
@@ -123,6 +189,44 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String _getUserName(User? user) {
+    if (user == null) return 'Traveler';
+
+    // 1. displayName
+    final displayName = user.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) {
+      return displayName;
+    }
+
+    // 2. email (kabla ya @)
+    final email = user.email?.trim();
+    if (email != null && email.isNotEmpty && email.contains('@')) {
+      return email.split('@')[0];
+    }
+
+    // 3. Fallback
+    return 'Traveler';
+  }
+
+  String _getUserInitial(User? user) {
+    if (user == null) return '?';
+
+    // 1. Jaribu displayName
+    final displayName = user.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) {
+      return displayName[0].toUpperCase();
+    }
+
+    // 2. Jaribu email (kama displayName haipo)
+    final email = user.email?.trim();
+    if (email != null && email.isNotEmpty) {
+      return email[0].toUpperCase();
+    }
+
+    // 3. Fallback
+    return '?';
+  }
+
   Widget _buildNetworkImage(String url, double width, double height) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
@@ -172,15 +276,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Hello, ${user?.displayName ?? 'Traveler'} 👋',
+                    TypewriterText(
+                      text: 'Hello, ${user?.displayName ?? user?.email?.split('@')[0] ?? 'Traveler'} 👋',
                       style: TextStyle(
                         fontSize: width * 0.04,
                         fontWeight: FontWeight.w500,
                         color: Colors.white,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      speed: const Duration(milliseconds: 70),
+                      startDelay: const Duration(milliseconds: 800),
                     ),
                     Text(
                       'Where to today?',
@@ -277,47 +381,86 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Hero(
                       tag: 'user_profile_avatar',
                       child: Container(
-                        padding: const EdgeInsets.all(2),
+                        padding: EdgeInsets.all(width * 0.008),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: AppColors.goldGradient,
+                          // ⭐ GLASS EFFECT — gradient transparent
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withOpacity(0.35),
+                              Colors.white.withOpacity(0.15),
+                            ],
+                          ),
+                          // ⭐ Border ya white iliyo transparent
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 1.5,
+                          ),
+                          // ⭐ Shadow nyepesi
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.accentGold.withOpacity(0.3),
-                              blurRadius: 8,
-                              spreadRadius: 1,
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: CircleAvatar(
-                          radius: width * 0.05,
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          backgroundImage: user?.photoURL != null &&
-                                  user!.photoURL!.isNotEmpty
-                              ? NetworkImage(user!.photoURL!)
-                              : null,
-                          child: user?.photoURL == null ||
-                                  user!.photoURL!.isEmpty
-                              ? Text(
-                                  user?.displayName
-                                          ?.substring(0, 1)
-                                          .toUpperCase() ??
-                                    '?',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: width * 0.04,
-                                  fontWeight: FontWeight.bold,
-                                  shadows: [
-                                    Shadow(
-                                        color: Colors.black26, blurRadius: 4)
-                                  ],
-                                ),
-                              )
-                              : null,
+                        child: ClipOval(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              width: width * 0.11,
+                              height: width * 0.11,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.1),
+                              ),
+                              child: Center(
+                                child: user?.photoURL != null &&
+                                        user!.photoURL!.isNotEmpty
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          user!.photoURL!,
+                                          width: width * 0.11,
+                                          height: width * 0.11,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Text(
+                                            _getUserInitial(user),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: width * 0.05,
+                                              fontWeight: FontWeight.bold,
+                                              shadows: const [
+                                                Shadow(
+                                                    color: Colors.black26,
+                                                    blurRadius: 4),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : Text(
+                                        _getUserInitial(user),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: width * 0.05,
+                                          fontWeight: FontWeight.bold,
+                                          shadows: const [
+                                            Shadow(
+                                                color: Colors.black26,
+                                                blurRadius: 4),
+                                          ],
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  )
                 ],
               ),
             ],
@@ -853,9 +996,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // ═══ Feed List ═══
         SizedBox(
-          height: width * 0.85,
+          height: width * 0.55,
           child: StreamBuilder<List<FeedPostModel>>(
-            stream: FeedUserService().getFeed(limit: 3),
+            stream: FeedUserService().getFeed(limit: 4),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(

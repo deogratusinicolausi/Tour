@@ -12,7 +12,20 @@
           "package_name": "com.example.turiva"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "749360118137-8vl6li8j7eksig8vo12t6nloe89ssc8u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.turiva",
+            "certificate_hash": "8b19503d97ecba37f2472a5a4e7eb9396b89974a"
+          }
+        },
+        {
+          "client_id": "749360118137-bp1rnpno9vl3e9ko0i1flbm55fnuhkna.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDDKlIwhqR51p9Vb0tnwlbWJnpgV0MUcXk"
@@ -20,7 +33,55 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "749360118137-bp1rnpno9vl3e9ko0i1flbm55fnuhkna.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "749360118137-metihq9ijoeg5es7ca5av29pcq4repgs.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.turiva"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:749360118137:android:98df8d13a36bed732497a8",
+        "android_client_info": {
+          "package_name": "com.example.turiva_admin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "749360118137-bp1rnpno9vl3e9ko0i1flbm55fnuhkna.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDKlIwhqR51p9Vb0tnwlbWJnpgV0MUcXk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "749360118137-bp1rnpno9vl3e9ko0i1flbm55fnuhkna.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "749360118137-metihq9ijoeg5es7ca5av29pcq4repgs.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.turiva"
+              }
+            }
+          ]
         }
       }
     }
